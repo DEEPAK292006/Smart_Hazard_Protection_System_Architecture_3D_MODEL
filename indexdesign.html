@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Interactive 3D design prototype of the Smart Hazard Protection System. Works offline; no external dependencies.">
+<title>Smart Hazard Protection System - 3D Design Prototype</title>
+<style>
+/* ===== Design tokens ===== */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --surface-2:#f7f9fb; --line:#dde3e9; --line-strong:#c3ccd5;
+  --txt:#16222d; --txt-2:#51606d; --txt-3:#7a8896;
+  --brand:#0b6e99; --brand-600:#095a7d; --brand-50:#e6f2f8; --nav:#101c28; --nav-2:#1b2b3b;
+  --ok:#17794a; --ok-bg:#e3f4ea; --warn:#8a5200; --warn-bg:#fff4e0; --warn-line:#e0a040; --bad:#a3231b; --bad-bg:#fde8e6;
+  --r-s:4px; --r-m:8px; --r-l:12px; --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px;
+  --sh-1:0 1px 2px rgba(16,28,40,.08); --sh-2:0 4px 14px rgba(16,28,40,.14);
+  --font:Inter,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; --fs-s:12px; --fs-m:13.5px; --fs-l:16px;
+  --lw:300px; --rw:340px; --hh:52px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:var(--font);font-size:var(--fs-m);color:var(--txt);background:var(--bg);display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+button,input,select{font-family:inherit}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ===== Header ===== */
+header.top{height:var(--hh);flex:none;background:var(--nav);color:#fff;display:flex;align-items:center;gap:var(--sp-4);padding:0 var(--sp-3);z-index:30}
+.logo{display:flex;align-items:center;gap:10px;min-width:0}
+.logo svg{flex:none}
+.logo b{font-size:var(--fs-l);font-weight:600;letter-spacing:.1px;white-space:nowrap}
+.logo span{font-size:var(--fs-s);color:#9db0c0;white-space:nowrap}
+nav#tabs{display:flex;gap:2px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
+nav#tabs::-webkit-scrollbar{display:none}
+nav#tabs button{background:none;border:0;color:#b4c3d0;padding:0 12px;height:var(--hh);cursor:pointer;font-size:var(--fs-m);border-bottom:3px solid transparent;white-space:nowrap;transition:color .15s}
+nav#tabs button:hover{color:#fff}
+nav#tabs button.on{color:#fff;border-bottom-color:#4cc2e6}
+.hact{display:flex;gap:var(--sp-1);flex:none}
+.ib{background:transparent;border:1px solid transparent;color:#d5e0e9;height:34px;min-width:34px;padding:0 10px;border-radius:var(--r-s);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:var(--fs-s);transition:background .15s}
+.ib:hover{background:var(--nav-2)}
+.ib:disabled{opacity:.45;cursor:not-allowed}
+
+/* ===== Safety notice (always visible, compact) ===== */
+.notice{flex:none;background:var(--warn-bg);border-bottom:1px solid var(--warn-line);color:#5b3a00;padding:4px var(--sp-3);font-size:var(--fs-s);display:flex;gap:var(--sp-2);align-items:center;line-height:1.35}
+.notice b{white-space:nowrap}
+.notice .full{display:none;margin-top:3px}
+.notice.open{align-items:flex-start}
+.notice.open .full{display:block}
+.notice.open .short{display:none}
+.notice button{background:none;border:0;color:#5b3a00;text-decoration:underline;cursor:pointer;font-size:var(--fs-s);padding:0 4px;margin-left:auto;white-space:nowrap}
+
+/* ===== Panes ===== */
+.panes{flex:1;min-height:0;position:relative}
+.pane{position:absolute;inset:0;overflow:auto;display:none}
+.pane.on{display:block}
+#pane-model.on{display:grid;grid-template-columns:var(--lw) minmax(0,1fr) var(--rw);overflow:hidden;transition:grid-template-columns .2s}
+#pane-model.hide-left{--lw:0px}
+#pane-model.hide-right{--rw:0px}
+@media (prefers-reduced-motion:reduce){#pane-model.on,*{transition:none!important;animation:none!important}}
+
+/* ===== Side panels ===== */
+.panel{background:var(--surface);overflow:hidden;min-width:0;display:flex;flex-direction:column}
+#left{border-right:1px solid var(--line)}
+#right{border-left:1px solid var(--line)}
+.hide-left #left,.hide-right #right{visibility:hidden}
+.panel-h{flex:none;display:flex;align-items:center;justify-content:space-between;padding:10px var(--sp-3);border-bottom:1px solid var(--line);font-weight:600;font-size:var(--fs-m)}
+.panel-b{flex:1;overflow-y:auto;padding:var(--sp-3)}
+.grp-t{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt-3);margin:0 0 6px;font-weight:600}
+.field{margin-bottom:var(--sp-3)}
+.field-row{display:flex;justify-content:space-between;align-items:baseline;font-size:var(--fs-m);margin-bottom:4px}
+.field-row output{color:var(--txt-2);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--brand);height:22px;margin:0}
+.switch{display:flex;align-items:center;gap:10px;padding:5px 0;cursor:pointer;font-size:var(--fs-m);user-select:none}
+.switch input{appearance:none;-webkit-appearance:none;width:34px;height:20px;border-radius:10px;background:#b9c4ce;position:relative;flex:none;cursor:pointer;transition:background .15s;margin:0}
+.switch input::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:var(--sh-1);transition:transform .15s}
+.switch input:checked{background:var(--brand)}
+.switch input:checked::after{transform:translateX(14px)}
+.switch input:disabled{opacity:.5;cursor:not-allowed}
+.switch .t{flex:1}
+.switch small{color:var(--txt-3);font-size:11px}
+details.acc{border-top:1px solid var(--line)}
+details.acc>summary{list-style:none;cursor:pointer;padding:10px 2px;font-weight:600;display:flex;justify-content:space-between;align-items:center;font-size:var(--fs-m)}
+details.acc>summary::-webkit-details-marker{display:none}
+details.acc>summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--txt-3);border-bottom:2px solid var(--txt-3);transform:rotate(45deg);transition:transform .15s;margin-right:4px}
+details.acc[open]>summary::after{transform:rotate(-135deg)}
+details.acc>summary:hover{color:var(--brand)}
+details.acc .acc-b{padding:2px 2px 12px}
+.acc-hint{font-weight:400;color:var(--txt-3);font-size:11px;margin-left:6px}
+
+/* ===== Buttons / inputs ===== */
+button.b{background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-s);padding:6px 11px;font-size:var(--fs-s);cursor:pointer;color:var(--txt);transition:background .12s,border-color .12s;min-height:30px}
+button.b:hover{background:var(--brand-50);border-color:var(--brand)}
+button.b:active{transform:translateY(1px)}
+button.b.on{background:var(--brand);border-color:var(--brand);color:#fff}
+button.b.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+button.b.primary:hover{background:var(--brand-600)}
+button.b.danger{color:var(--bad);border-color:#e3b5b1}
+button.b:disabled{opacity:.5;cursor:not-allowed}
+.btnrow{display:flex;flex-wrap:wrap;gap:6px}
+select,input[type=text],input[type=number]{font-size:var(--fs-m);padding:6px 8px;border:1px solid var(--line-strong);border-radius:var(--r-s);background:var(--surface);color:var(--txt);min-height:32px}
+select{width:100%}
+input[type=text]{width:100%}
+.partlist{max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:var(--r-s);margin-top:6px}
+.partlist div{padding:5px 8px;display:flex;gap:8px;align-items:center;cursor:pointer;border-bottom:1px solid #eef2f5;font-size:var(--fs-s)}
+.partlist div:hover{background:var(--surface-2)}
+.partlist div.sel{background:#ffeccc}
+.partlist small{color:var(--txt-3)}
+
+/* ===== Stage ===== */
+.stage-col{display:flex;flex-direction:column;min-width:0;min-height:0}
+.stage{position:relative;flex:1;min-height:0;background:#e9eef2}
+#cv{display:block;width:100%;height:100%;touch-action:none;cursor:grab;outline:none}
+#cv.drag{cursor:grabbing}
+#cv:focus-visible{outline:2px solid var(--brand);outline-offset:-2px}
+.tb{position:absolute;display:flex;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--sh-1);padding:3px}
+.tb.tl{top:10px;left:10px}
+.tb.tr{top:10px;right:10px}
+.tb button{background:none;border:0;border-radius:var(--r-s);height:30px;min-width:30px;padding:0 9px;cursor:pointer;color:var(--txt-2);font-size:var(--fs-s);display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:background .12s,color .12s}
+.tb button:hover{background:var(--brand-50);color:var(--brand)}
+.tb button.on{background:var(--brand);color:#fff}
+.tb .sep{width:1px;background:var(--line);margin:4px 2px}
+#tip{position:absolute;pointer-events:none;background:rgba(16,28,40,.92);color:#fff;font-size:var(--fs-s);padding:4px 8px;border-radius:var(--r-s);display:none;white-space:nowrap;z-index:5}
+#loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#e9eef2;color:var(--txt-2);font-size:var(--fs-m);z-index:8;flex-direction:column;gap:10px}
+.spin{width:26px;height:26px;border:3px solid var(--line-strong);border-top-color:var(--brand);border-radius:50%;animation:sp 0.9s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#fatal{display:none;position:absolute;inset:0;background:var(--surface);padding:var(--sp-5);z-index:9}
+#status{flex:none;height:30px;display:flex;align-items:center;gap:var(--sp-4);padding:0 var(--sp-3);background:var(--surface);border-top:1px solid var(--line);font-size:var(--fs-s);color:var(--txt-2);overflow:hidden;white-space:nowrap}
+#status .sel{color:var(--txt);font-weight:600;overflow:hidden;text-overflow:ellipsis;max-width:58%;flex:none}
+#status .grow{flex:1}
+#status .hint{color:var(--txt-3)}
+
+/* ===== Chips, info ===== */
+.chip{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;margin:1px 3px 1px 0;border:1px solid transparent;line-height:1.55}
+.c-pdf{background:#e3edfb;color:#1d4a91;border-color:#b9cff0}.c-calc{background:var(--ok-bg);color:#17653a;border-color:#b3dcc3}
+.c-ass{background:#fff0d9;color:var(--warn);border-color:#f0cf9a}.c-tbd{background:var(--bad-bg);color:#9a1f17;border-color:#f0b9b4}
+.c-std{background:var(--ok-bg);color:#17653a}.c-opt{background:#e3edfb;color:#1d4a91}.c-res{background:#f3e4f7;color:#6b2d83}.c-gen{background:#eceff2;color:#4a5864}
+.kv{display:grid;grid-template-columns:86px 1fr;gap:6px 10px;font-size:var(--fs-m)}
+.kv>div:nth-child(odd){color:var(--txt-3)}
+.small{font-size:var(--fs-s);color:var(--txt-2)}
+.empty{color:var(--txt-2);text-align:center;padding:var(--sp-5) var(--sp-3)}
+.empty svg{opacity:.5;margin-bottom:8px}
+
+/* ===== Content tabs ===== */
+.page{max-width:1280px;margin:0 auto;padding:var(--sp-4)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);padding:var(--sp-4) var(--sp-5);margin:0 0 var(--sp-4);box-shadow:var(--sh-1)}
+.card h2{margin:0 0 var(--sp-2);font-size:18px;color:var(--txt);font-weight:600}
+.card h3{margin:var(--sp-4) 0 6px;font-size:var(--fs-m);color:var(--txt);font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)}
+table{border-collapse:collapse;width:100%;font-size:var(--fs-s)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--surface-2);font-weight:600;position:sticky;top:0;z-index:1}
+td.n,th.n{text-align:right}
+tr.off td{color:var(--txt-3);background:var(--surface-2)}
+td input[type=number]{width:70px}
+.warn,.bad,.ok{padding:8px 12px;margin:10px 0;font-size:var(--fs-m);border-radius:var(--r-s);border-left:4px solid}
+.warn{background:var(--warn-bg);border-color:var(--warn-line)}.bad{background:var(--bad-bg);border-color:#c9463d}.ok{background:var(--ok-bg);border-color:#2c9a5d}
+.res{font-size:20px;font-weight:700}
+.led{display:inline-block;width:16px;height:16px;border-radius:50%;vertical-align:middle;margin-right:6px;border:1px solid #333}
+.stagecard{border:1px solid var(--line);border-radius:var(--r-m);padding:10px 12px;margin:8px 0;background:var(--surface-2)}
+.stagecard h4{margin:0 0 4px;font-size:var(--fs-m)}
+svg text{font-family:var(--font)}
+.dwg{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:var(--sp-3)}
+.dwg canvas{background:#fff;border:1px solid var(--line-strong);width:100%;border-radius:var(--r-s)}
+.tblwrap{overflow:auto;max-width:100%}
+
+/* ===== Dialogs ===== */
+dialog{border:1px solid var(--line);border-radius:var(--r-l);padding:0;max-width:min(560px,92vw);box-shadow:var(--sh-2);color:var(--txt)}
+dialog::backdrop{background:rgba(16,28,40,.45)}
+dialog .dh{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);font-weight:600;font-size:var(--fs-l)}
+dialog .db{padding:14px 16px;max-height:70vh;overflow:auto}
+dialog .df{padding:10px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+dialog table td:first-child{white-space:nowrap;font-weight:600}
+.x{background:none;border:0;font-size:20px;line-height:1;cursor:pointer;color:var(--txt-2);padding:4px 8px;border-radius:var(--r-s)}
+.x:hover{background:var(--surface-2)}
+
+
+/* ===== Friendly layer: scenes, toast, tour, welcome ===== */
+.scenes{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:flex;gap:6px;max-width:calc(100% - 20px);overflow-x:auto;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:999px;box-shadow:var(--sh-2);scrollbar-width:none;z-index:4}
+.scenes::-webkit-scrollbar{display:none}
+.scenes button{flex:none;border:1px solid transparent;background:var(--surface-2);color:var(--txt);border-radius:999px;padding:7px 14px;font-size:var(--fs-m);cursor:pointer;display:inline-flex;gap:6px;align-items:center;transition:background .12s}
+.scenes button:hover{background:var(--brand-50);color:var(--brand)}
+.scenes button.on{background:var(--brand);color:#fff}
+.scenes .ico{font-size:14px;line-height:1}
+.toast{position:absolute;top:58px;left:50%;transform:translateX(-50%);background:rgba(16,28,40,.92);color:#fff;padding:8px 14px;border-radius:var(--r-m);font-size:var(--fs-m);z-index:6;max-width:90%;text-align:center;transition:opacity .4s}
+.toast.gone{opacity:0;pointer-events:none}
+.scene-note{position:absolute;left:12px;bottom:64px;max-width:min(380px,calc(100% - 24px));background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--r-m);padding:10px 12px;font-size:var(--fs-m);box-shadow:var(--sh-2);z-index:4;display:none}
+.scene-note b{display:block;margin-bottom:2px}
+.scene-note button{position:absolute;top:2px;right:4px}
+.tour-hl{outline:3px solid #f5a623!important;outline-offset:3px;border-radius:8px;position:relative;z-index:15}
+#tour{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);width:min(420px,92vw);background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-l);box-shadow:var(--sh-2);padding:14px 16px;z-index:60;display:none}
+#tour h4{margin:0 0 4px;font-size:var(--fs-l)}
+#tour p{margin:0 0 10px;color:var(--txt-2)}
+#tour .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.welcome-steps{display:grid;gap:10px;margin:8px 0}
+.welcome-steps div{display:flex;gap:12px;align-items:flex-start;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-m);padding:10px 12px}
+.welcome-steps .n{flex:none;width:28px;height:28px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+@media (pointer:coarse){button.b,.tb button,.scenes button{min-height:40px}.switch input{width:42px;height:24px}.switch input::after{width:20px;height:20px}.switch input:checked::after{transform:translateX(18px)}}
+@media (max-width:860px){.scenes{bottom:64px}.scene-note{bottom:112px}#tour{bottom:20px}}
+
+/* ===== Responsive ===== */
+.only-m{display:none}
+@media (max-width:1100px){:root{--lw:270px;--rw:300px}.logo span{display:none}}
+@media (max-width:860px){
+  :root{--hh:48px}
+  #pane-model.on{display:block}
+  .stage-col{position:absolute;inset:0}
+  .panel{position:absolute;left:0;right:0;bottom:0;top:auto;height:62%;z-index:20;box-shadow:0 -6px 20px rgba(16,28,40,.22);border:0;border-top:1px solid var(--line-strong);border-radius:var(--r-l) var(--r-l) 0 0;transform:translateY(105%);transition:transform .22s;visibility:visible!important}
+  #pane-model.show-left #left,#pane-model.show-right #right{transform:none}
+  .only-m{display:inline-flex}
+  .hide-d{display:none!important}
+  #status .hint{display:none}
+  .grid2{grid-template-columns:1fr}
+  .card{padding:var(--sp-3)}
+  .dwg{grid-template-columns:1fr}
+  .tb.tr{top:auto;bottom:10px}
+  .notice .short{display:inline}
+  #status .sel{max-width:70%}
+}
+@media (max-width:520px){.logo b{font-size:14px}.hact .lbl{display:none}}
+@media print{header.top,.notice,#status{display:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="logo" aria-label="Smart Hazard Protection System">
+    <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 2 3 6v7c0 6.5 4.5 11 11 13 6.500-2 11-6.500 11-13V6z" fill="#0b6e99"/><path d="M8 13h12M14 8v10" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>
+    <div><b>Smart Hazard Protection</b> <span>3D design prototype &middot; mm</span></div>
+  </div>
+  <nav id="tabs" role="tablist" aria-label="Sections">
+    <button data-t="model" class="on" role="tab">3D Model</button><button data-t="power" role="tab">Power &amp; Battery</button><button data-t="flow" role="tab">NFC &amp; Workflow</button><button data-t="arch" role="tab">Architecture</button><button data-t="dwg" role="tab">Drawings</button><button data-t="bom" role="tab">BOM &amp; Checklist</button><button data-t="about" role="tab">About</button>
+  </nav>
+  <div class="hact">
+    <button class="ib" id="h-reset" title="Reset camera view" aria-label="Reset view"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.700M3 4v5h5"/></svg><span class="lbl">Reset view</span></button>
+    <button class="ib" id="h-set" title="Settings" aria-label="Settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg><span class="lbl">Settings</span></button>
+    <button class="ib" id="h-help" title="Help and legend" aria-label="Help"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.500 9a2.500 2.500 0 1 1 3.500 2.300c-.7.400-1 .9-1 1.700M12 17h.01"/></svg><span class="lbl">Help</span></button>
+  </div>
+</header>
+<div class="notice" id="notice" role="note">
+  <span><b>Design prototype only.</b> <span class="short">Not certified; no real-world protection claimed. Values are provisional unless marked as from the PDF.</span><span class="full">This model does not establish PPE certification or real-world protective performance. Dimensions, masses and currents are provisional unless marked as taken from the project PDF. Respiratory, helmet and hearing protection must be certified, selected and fitted by qualified professionals; monitoring electronics never replace or control that protection.</span></span>
+  <button id="notice-t" aria-expanded="false">Details</button>
+</div>
+
+<div class="panes">
+<section class="pane on" id="pane-model" aria-label="3D model workspace">
+  <aside class="panel" id="left" aria-label="Controls">
+    <div class="panel-h"><span>Controls</span><button class="x" id="close-left" aria-label="Close controls">&times;</button></div>
+    <div class="panel-b">
+      <p class="grp-t">Quick controls</p>
+      <div class="field"><div class="field-row"><label for="explode">Exploded view</label><output id="exv-o" for="explode">0%</output></div><input type="range" id="explode" min="0" max="100" value="0" aria-describedby="exh"><div class="sr" id="exh">Separates parts along their assembly axes</div></div>
+      <label class="switch" title="Make shells transparent to see internal electronics"><input type="checkbox" id="o-cut"><span class="t">Transparent shells <small>(cutaway)</small></span></label>
+      <label class="switch" title="Show component ID labels on the model"><input type="checkbox" id="o-lab"><span class="t">Component labels</span></label>
+      <label class="switch" title="Show provisional dimension lines"><input type="checkbox" id="o-dim"><span class="t">Dimensions <small>(provisional, mm)</small></span></label>
+
+      <details class="acc" style="margin-top:8px"><summary>Display options</summary><div class="acc-b">
+        <label class="switch"><input type="checkbox" id="o-nfc"><span class="t">NFC scanning volume <small>(design target)</small></span></label>
+        <label class="switch"><input type="checkbox" id="o-cab" checked><span class="t">Cables</span></label>
+        <label class="switch"><input type="checkbox" id="o-link" checked><span class="t">Data links <small>(dashed)</small></span></label>
+        <label class="switch"><input type="checkbox" id="o-wire"><span class="t">Wireframe</span></label>
+        <label class="switch"><input type="checkbox" class="grp" data-g="ref" checked><span class="t">Reference mannequin</span></label>
+      </div></details>
+
+      <details class="acc"><summary>Categories <span class="acc-hint">what to show</span></summary><div class="acc-b">
+        <label class="switch"><input type="checkbox" class="kind" data-k="standard" checked><span class="t">Standard features</span></label>
+        <label class="switch"><input type="checkbox" class="kind" data-k="optional" checked><span class="t">Optional features</span></label>
+        <label class="switch"><input type="checkbox" class="kind" data-k="research" checked><span class="t">Research-stage proposals</span></label>
+        <p class="grp-t" style="margin-top:10px">Subsystems</p><div class="btnrow" id="grps"></div>
+      </div></details>
+
+      <details class="acc"><summary>Components <span class="acc-hint">find and select</span></summary><div class="acc-b">
+        <label class="sr" for="filter">Filter components</label><input type="text" id="filter" placeholder="Filter by ID or name" autocomplete="off">
+        <div class="partlist" id="plist" role="listbox" aria-label="Component list"></div>
+      </div></details>
+
+      <details class="acc"><summary>Battery location</summary><div class="acc-b">
+        <label class="sr" for="batsel">Battery location</label><select id="batsel"></select>
+        <div class="btnrow" style="margin-top:8px"><button class="b" id="hibat">Highlight power parts</button><button class="b" id="clrhi">Clear highlight</button></div>
+      </div></details>
+
+      <details class="acc"><summary>Advanced <span class="acc-hint">section, export, reset</span></summary><div class="acc-b">
+        <label class="switch"><input type="checkbox" id="o-sec"><span class="t">Section plane <small>(hides +X side)</small></span></label>
+        <div class="field"><div class="field-row"><label for="secx">Plane position</label><output id="secx-o" for="secx">0 mm</output></div><input type="range" id="secx" min="-200" max="200" value="0"></div>
+        <p class="grp-t">Export</p>
+        <div class="btnrow"><button class="b" id="png">Save view (PNG)</button><button class="b" id="stl" title="Faceted concept geometry for mock-ups only; not CAD, not certified">Export STL</button></div>
+        <p class="small" style="margin-top:8px">STL contains concept geometry only. STEP / native CAD are not produced.</p>
+        <p class="grp-t" style="margin-top:12px">Defaults</p>
+        <button class="b danger" id="resetall">Reset all settings to default</button>
+      </div></details>
+    </div>
+  </aside>
+
+  <div class="stage-col">
+    <div class="stage" id="stage">
+      <canvas id="cv" tabindex="0" role="img" aria-label="Interactive 3D model of the Smart Hazard Protection System. Drag to rotate, scroll to zoom, arrow keys rotate, plus and minus zoom."></canvas>
+      <div class="tb tl" role="toolbar" aria-label="Camera views"><span id="views" style="display:flex;gap:2px">
+        <button data-v="iso" title="Isometric view">Iso</button><button data-v="front" title="Front view">Front</button><button data-v="rear" title="Rear view">Rear</button><button data-v="left" title="Left view (wearer's left)">Left</button><button data-v="right" title="Right view">Right</button><button data-v="top" title="Top view">Top</button><button data-v="bottom" title="Bottom view">Bottom</button></span></div>
+      <div class="tb tr" role="toolbar" aria-label="Workspace actions">
+        <button id="zin" title="Zoom in (+)" aria-label="Zoom in">+</button><button id="zout" title="Zoom out (-)" aria-label="Zoom out">&minus;</button><button id="zfit" title="Fit model to window (R)" aria-label="Fit to window"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+        <span class="sep"></span>
+        <button id="tg-left" title="Show or hide controls panel" aria-pressed="true">Controls</button><button id="tg-right" title="Show or hide details panel" aria-pressed="true">Details</button>
+      </div>
+      <div class="toast" id="toast" role="status">Drag to rotate &middot; scroll to zoom &middot; click any part for details</div>
+      <div class="scene-note" id="scene-note" role="status"><button class="x" id="scene-x" aria-label="Dismiss">&times;</button><b id="sn-t"></b><span id="sn-d"></span></div>
+      <div class="scenes" id="scenes" role="toolbar" aria-label="Quick scenes: jump to an area of the product">
+        <button data-s="overview"><span class="ico">&#9711;</span>Overview</button><button data-s="inside"><span class="ico">&#9681;</span>See inside</button><button data-s="explode"><span class="ico">&#10021;</span>Exploded</button><button data-s="resp"><span class="ico">&#9787;</span>Respirator</button><button data-s="hear"><span class="ico">&#9835;</span>Hearing</button><button data-s="neck"><span class="ico">&#9660;</span>Neck cover</button><button data-s="nfc"><span class="ico">&#9678;</span>NFC reader</button><button data-s="batt"><span class="ico">&#9889;</span>Battery</button>
+      </div>
+      <div id="tip" role="tooltip"></div>
+      <div id="loading"><div class="spin" aria-hidden="true"></div><div>Preparing 3D model&hellip;</div></div>
+      <div id="fatal"><h2>3D view unavailable</h2><p>This browser could not start the canvas renderer. The other tabs (power, workflow, architecture, BOM) still work. Try a current version of Chrome, Edge, Firefox or Safari.</p></div>
+    </div>
+    <div id="status" aria-live="polite"><span class="sel" id="st-sel">No selection</span><span id="st-dim"></span><span class="grow"></span><span class="hint">Drag: rotate &middot; Wheel: zoom &middot; Shift/right-drag: pan &middot; Click: select</span><span id="st-cam"></span></div>
+  </div>
+
+  <aside class="panel" id="right" aria-label="Component details">
+    <div class="panel-h"><span>Details</span><button class="x" id="close-right" aria-label="Close details">&times;</button></div>
+    <div class="panel-b" id="infobody"></div>
+  </aside>
+</section>
+
+<section class="pane" id="pane-power"><div class="page" id="powerroot"></div></section>
+<section class="pane" id="pane-flow"><div class="page" id="flowroot"></div></section>
+<section class="pane" id="pane-arch"><div class="page" id="archroot"></div></section>
+<section class="pane" id="pane-dwg"><div class="page" id="dwgroot"></div></section>
+<section class="pane" id="pane-bom"><div class="page" id="bomroot"></div></section>
+<section class="pane" id="pane-about"><div class="page" id="aboutroot"></div></section>
+</div>
+
+<dialog id="dlg-welcome" aria-labelledby="wh"><div class="dh"><span id="wh">Welcome to the 3D design prototype</span><button class="x" data-close aria-label="Close">&times;</button></div><div class="db">
+  <p style="margin-top:0">This is an interactive model of the Smart Hazard Protection System: helmet, respirator, neck cover, hearing protection, electronics and battery. It is a concept model, not a certified product.</p>
+  <div class="welcome-steps"><div><span class="n">1</span><span><b>Look around.</b> Drag to rotate, scroll or pinch to zoom, hold Shift (or two fingers) to move.</span></div><div><span class="n">2</span><span><b>Jump to an area.</b> Use the round buttons at the bottom: Overview, See inside, Respirator, Hearing, Battery and more.</span></div><div><span class="n">3</span><span><b>Tap any part.</b> A plain-language description, size and status appear in the Details panel.</span></div></div>
+  <p class="small">Other tabs at the top show power and battery runtime, the NFC workflow, diagrams, drawings and the parts list.</p>
+</div><div class="df"><button class="b" id="w-skip" data-close>Start exploring</button><button class="b primary" id="w-tour">Take the 30-second tour</button></div></dialog>
+
+<dialog id="dlg-help" aria-labelledby="hh"><div class="dh"><span id="hh">Help and legend</span><button class="x" data-close aria-label="Close">&times;</button></div><div class="db">
+  <p class="grp-t">Navigation</p>
+  <table><tr><td>Rotate</td><td>Drag, or arrow keys when the model is focused</td></tr><tr><td>Zoom</td><td>Mouse wheel, pinch, or + / - buttons</td></tr><tr><td>Pan</td><td>Shift-drag, right-drag, or two-finger drag</td></tr><tr><td>Select</td><td>Click a part; details open in the right panel</td></tr><tr><td>Reset</td><td>Reset view button, or press R</td></tr><tr><td>Deselect</td><td>Esc</td></tr></table>
+  <p class="grp-t" style="margin-top:14px">Where things are</p>
+  <p class="small">Quick controls are at the top of the left panel; less-used options are inside expandable sections. Camera views and zoom are on the model toolbars. Tabs above hold power, workflow, architecture, drawings and the BOM.</p>
+  <p class="grp-t" style="margin-top:14px">Information labels</p>
+  <p class="small"><span class="chip c-pdf">PDF</span> from the project document &nbsp;<span class="chip c-calc">calculated</span> by formula &nbsp;<span class="chip c-ass">provisional</span> assumption or placeholder &nbsp;<span class="chip c-tbd">TBD</span> not yet determined.</p>
+  <p class="small">The PDF supplies no dimensions, currents, battery specifications or masses; all such values are assumptions.</p>
+</div><div class="df"><button class="b" id="h-tour">Replay the tour</button><button class="b primary" data-close>Got it</button></div></dialog>
+<div id="tour" role="dialog" aria-label="Guided tour"><h4 id="tour-t"></h4><p id="tour-d"></p><div class="row"><span class="small" id="tour-n"></span><span class="btnrow"><button class="b" id="tour-skip">Skip</button><button class="b primary" id="tour-next">Next</button></span></div></div>
+
+<dialog id="dlg-set" aria-labelledby="sh"><div class="dh"><span id="sh">Settings</span><button class="x" data-close aria-label="Close">&times;</button></div><div class="db">
+  <label class="switch"><input type="checkbox" id="set-motion"><span class="t">Reduce motion <small>(stop the NFC volume pulse)</small></span></label>
+  <label class="switch"><input type="checkbox" id="set-status" checked><span class="t">Show status bar</span></label>
+  <label class="switch"><input type="checkbox" id="set-hover" checked><span class="t">Show hover tooltips in 3D view</span></label>
+  <p class="grp-t" style="margin-top:14px">Defaults</p>
+  <button class="b danger" id="set-reset">Reset all settings to default</button>
+</div><div class="df"><button class="b primary" data-close>Done</button></div></dialog>
+<script>
+'use strict';
+/* ================= Minimal self-contained 3D engine (Canvas 2D, painter's algorithm) ================= */
+const M3 = {
+  rotX:a=>{const c=Math.cos(a),s=Math.sin(a);return [1,0,0, 0,c,-s, 0,s,c];},
+  rotY:a=>{const c=Math.cos(a),s=Math.sin(a);return [c,0,s, 0,1,0, -s,0,c];},
+  rotZ:a=>{const c=Math.cos(a),s=Math.sin(a);return [c,-s,0, s,c,0, 0,0,1];},
+  mul:(A,B)=>{const R=new Array(9);for(let i=0;i<3;i++)for(let j=0;j<3;j++){R[i*3+j]=A[i*3]*B[j]+A[i*3+1]*B[3+j]+A[i*3+2]*B[6+j];}return R;},
+  app:(R,p)=>[R[0]*p[0]+R[1]*p[1]+R[2]*p[2],R[3]*p[0]+R[4]*p[1]+R[5]*p[2],R[6]*p[0]+R[7]*p[1]+R[8]*p[2]],
+  T:R=>[R[0],R[3],R[6],R[1],R[4],R[7],R[2],R[5],R[8]],
+  alignZ:(d)=>{ // rotation taking +Z to unit vector d
+    const l=Math.hypot(d[0],d[1],d[2]);const n=[d[0]/l,d[1]/l,d[2]/l];
+    const c=n[2];
+    if(c>0.99999)return [1,0,0,0,1,0,0,0,1];
+    if(c<-0.99999)return [1,0,0,0,-1,0,0,0,-1];
+    const ax=[-n[1],n[0],0];const s=Math.hypot(ax[0],ax[1]);const k=[ax[0]/s,ax[1]/s,0];const t=1-c;const sn=s;
+    return [t*k[0]*k[0]+c,t*k[0]*k[1]-k[2]*sn,t*k[0]*k[2]+k[1]*sn,
+            t*k[0]*k[1]+k[2]*sn,t*k[1]*k[1]+c,t*k[1]*k[2]-k[0]*sn,
+            t*k[0]*k[2]-k[1]*sn,t*k[1]*k[2]+k[0]*sn,t*k[2]*k[2]+c];
+  }
+};
+const vsub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const vadd=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const vscl=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const vcross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const vdot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const vlen=a=>Math.hypot(a[0],a[1],a[2]);
+const vnorm=a=>{const l=vlen(a)||1;return [a[0]/l,a[1]/l,a[2]/l];};
+
+/* ---------- mesh builders (units: mm) ---------- */
+function mkBox(sx,sy,sz){const x=sx/2,y=sy/2,z=sz/2;
+  return {v:[-x,-y,-z, x,-y,-z, x,y,-z, -x,y,-z, -x,-y,z, x,-y,z, x,y,z, -x,y,z],
+          f:[0,2,1,0,3,2, 4,5,6,4,6,7, 0,1,5,0,5,4, 2,3,7,2,7,6, 1,2,6,1,6,5, 3,0,4,3,4,7]};}
+function mkEll(rx,ry,rz,nu,nv,o){o=o||{};nu=nu||22;nv=nv||14;
+  const p0=o.p0!==undefined?o.p0:0,p1=o.p1!==undefined?o.p1:2*Math.PI,t0=o.t0!==undefined?o.t0:0,t1=o.t1!==undefined?o.t1:Math.PI;
+  const v=[],f=[];
+  for(let j=0;j<=nv;j++){const t=t0+(t1-t0)*j/nv;for(let i=0;i<=nu;i++){const p=p0+(p1-p0)*i/nu;
+    v.push(rx*Math.sin(t)*Math.cos(p),ry*Math.sin(t)*Math.sin(p),rz*Math.cos(t));}}
+  for(let j=0;j<nv;j++)for(let i=0;i<nu;i++){const a=j*(nu+1)+i,b=a+1,c=a+nu+1,d=c+1;f.push(a,c,b,b,c,d);}
+  return {v,f};}
+function mkCyl(r1,r2,h,n,capped){n=n||20;const v=[],f=[];const z0=-h/2,z1=h/2;
+  for(let i=0;i<n;i++){const a=2*Math.PI*i/n;v.push(r1*Math.cos(a),r1*Math.sin(a),z0);}
+  for(let i=0;i<n;i++){const a=2*Math.PI*i/n;v.push(r2*Math.cos(a),r2*Math.sin(a),z1);}
+  for(let i=0;i<n;i++){const j=(i+1)%n;f.push(i,j,n+i,j,n+j,n+i);}
+  if(capped!==false){const c0=v.length/3;v.push(0,0,z0);const c1=c0+1;v.push(0,0,z1);
+    for(let i=0;i<n;i++){const j=(i+1)%n;f.push(c0,j,i,c1,n+i,n+j);}}
+  return {v,f};}
+function mkSurf(fn,nu,nv){const v=[],f=[];
+  for(let j=0;j<=nv;j++)for(let i=0;i<=nu;i++){const p=fn(i/nu,j/nv);v.push(p[0],p[1],p[2]);}
+  for(let j=0;j<nv;j++)for(let i=0;i<nu;i++){const a=j*(nu+1)+i,b=a+1,c=a+nu+1,d=c+1;f.push(a,c,b,b,c,d);}
+  return {v,f};}
+function mkTube(pts,r,m,closed){m=m||6;const v=[],f=[];const N=pts.length;
+  for(let k=0;k<N;k++){
+    let t;
+    if(closed){t=vsub(pts[(k+1)%N],pts[(k-1+N)%N]);}
+    else if(k===0)t=vsub(pts[1],pts[0]);else if(k===N-1)t=vsub(pts[N-1],pts[N-2]);else t=vsub(pts[k+1],pts[k-1]);
+    t=vnorm(t);
+    let ref=Math.abs(t[2])<0.9?[0,0,1]:[1,0,0];
+    const a=vnorm(vcross(t,ref)),b=vnorm(vcross(t,a));
+    const rr=Array.isArray(r)?r[k]:r;
+    for(let i=0;i<m;i++){const ang=2*Math.PI*i/m;const c=Math.cos(ang)*rr,s=Math.sin(ang)*rr;
+      v.push(pts[k][0]+a[0]*c+b[0]*s,pts[k][1]+a[1]*c+b[1]*s,pts[k][2]+a[2]*c+b[2]*s);}
+  }
+  const segs=closed?N:N-1;
+  for(let k=0;k<segs;k++){const k2=(k+1)%N;for(let i=0;i<m;i++){const i2=(i+1)%m;
+    const a=k*m+i,b=k*m+i2,c=k2*m+i,d=k2*m+i2;f.push(a,c,b,b,c,d);}}
+  return {v,f};}
+function xf(mesh,o){o=o||{};const s=o.s||[1,1,1],R=o.R||null,t=o.t||[0,0,0];const v=new Array(mesh.v.length);
+  for(let i=0;i<mesh.v.length;i+=3){let p=[mesh.v[i]*s[0],mesh.v[i+1]*s[1],mesh.v[i+2]*s[2]];if(R)p=M3.app(R,p);
+    v[i]=p[0]+t[0];v[i+1]=p[1]+t[1];v[i+2]=p[2]+t[2];}
+  return {v,f:mesh.f.slice()};}
+function merge(list){const v=[],f=[];let off=0;for(const m of list){for(const x of m.v)v.push(x);for(const i of m.f)f.push(i+off);off+=m.v.length/3;}return {v,f};}
+const hex=h=>{h=h.replace('#','');return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];};
+
+/* ---------- Part registry ---------- */
+const PARTS=[];
+function addPart(o){
+  o.sub=o.sub.map(s=>({m:s.m,c:hex(s.c),a:s.a===undefined?1:s.a,closed:!!s.closed,emis:!!s.emis,shell:!!s.shell,wire:!!s.wire,b:s.b||0}));
+  o.idx=PARTS.length;o.expl=o.expl||[0,0,0];o.kind=o.kind||'standard';o.vis=true;
+  prep(o);PARTS.push(o);return o;}
+function prep(p){
+  let mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];
+  for(const s of p.sub){const m=s.m;const nT=m.f.length/3;s.nrm=new Float32Array(nT*3);
+    let cx=0,cy=0,cz=0,nv=m.v.length/3;
+    for(let i=0;i<m.v.length;i+=3){cx+=m.v[i];cy+=m.v[i+1];cz+=m.v[i+2];
+      for(let k=0;k<3;k++){mn[k]=Math.min(mn[k],m.v[i+k]);mx[k]=Math.max(mx[k],m.v[i+k]);}}
+    cx/=nv;cy/=nv;cz/=nv;
+    for(let t=0;t<nT;t++){const a=m.f[t*3]*3,b=m.f[t*3+1]*3,c=m.f[t*3+2]*3;
+      const e1=[m.v[b]-m.v[a],m.v[b+1]-m.v[a+1],m.v[b+2]-m.v[a+2]],e2=[m.v[c]-m.v[a],m.v[c+1]-m.v[a+1],m.v[c+2]-m.v[a+2]];
+      let n=vnorm(vcross(e1,e2));
+      if(s.closed){const fc=[(m.v[a]+m.v[b]+m.v[c])/3-cx,(m.v[a+1]+m.v[b+1]+m.v[c+1])/3-cy,(m.v[a+2]+m.v[b+2]+m.v[c+2])/3-cz];
+        if(vdot(n,fc)<0){n=[-n[0],-n[1],-n[2]];}}
+      s.nrm[t*3]=n[0];s.nrm[t*3+1]=n[1];s.nrm[t*3+2]=n[2];}
+    s.base=new Float32Array(m.v);s.ws=new Float32Array(m.v.length);s.vs=new Float32Array(m.v.length);
+    s.cache={};s.cacheSel={};s.cacheHi={};
+  }
+  p.bbox=[mn,mx];p.center=[(mn[0]+mx[0])/2,(mn[1]+mx[1])/2,(mn[2]+mx[2])/2];
+}
+function rebuildPart(p,subs){ // replace geometry (used by battery option)
+  p.sub=subs.map(s=>({m:s.m,c:hex(s.c),a:s.a===undefined?1:s.a,closed:!!s.closed,emis:!!s.emis,shell:!!s.shell,wire:!!s.wire,b:s.b||0}));prep(p);}
+
+/* ---------- Camera / scene state ---------- */
+const CAM={yaw:-0.55,pitch:0.28,dist:1000,tx:0,ty:-10,tz:-70};
+function viewRot(c){return M3.mul(M3.rotX(c.pitch),M3.rotZ(c.yaw));}
+const LIGHT=vnorm([-0.45,-0.75,0.65]);
+function shadeLevel(n){ // n in view space already oriented to viewer
+  const d=Math.max(0,vdot(n,LIGHT));const h=0.5+0.5*(-n[1]);return Math.min(1,0.30+0.52*d+0.20*h);}
+function colStr(base,lv,tint,tAmt){let r=base[0],g=base[1],b=base[2];
+  if(tint){r=r*(1-tAmt)+tint[0]*tAmt;g=g*(1-tAmt)+tint[1]*tAmt;b=b*(1-tAmt)+tint[2]*tAmt;}
+  return 'rgb('+Math.min(255,Math.round(r*lv))+','+Math.min(255,Math.round(g*lv))+','+Math.min(255,Math.round(b*lv))+')';}
+
+const OPT={explode:0,wire:false,cutaway:false,secOn:false,secX:0,labels:false,dims:false,nfcZone:false,cables:true,
+  showKinds:{standard:true,optional:true,research:true},sel:-1,hover:-1,hi:null,time:0};
+function partVisible(p){return p.vis&&OPT.showKinds[p.kind]!==false&&(p.cableFlag?OPT.cables:true);}
+
+let TRI={n:0,part:new Int32Array(1),sub:new Int16Array(1),tri:new Int32Array(1),depth:new Float32Array(1),order:null};
+let PICK={scr:new Float32Array(1),part:new Int32Array(1),alpha:new Uint8Array(1),n:0};
+
+function worldUpdate(){
+  for(const p of PARTS){const e=[p.expl[0]*OPT.explode,p.expl[1]*OPT.explode,p.expl[2]*OPT.explode];p.off=e;
+    for(const s of p.sub){const b=s.base,w=s.ws;for(let i=0;i<b.length;i+=3){w[i]=b[i]+e[0];w[i+1]=b[i+1]+e[1];w[i+2]=b[i+2]+e[2];}}}
+}
+
+/* project helper used for overlays; returns [sx,sy,depth] */
+function makeProj(W,H,cam,ortho,scale){
+  const R=viewRot(cam);const f=ortho?scale:H*0.98;const cx=W/2,cy=H/2;
+  return {R,f,proj:(p)=>{const q=[p[0]-cam.tx,p[1]-cam.ty,p[2]-cam.tz];const v=M3.app(R,q);
+    if(ortho)return [cx+v[0]*f,cy-v[2]*f,v[1]];
+    const d=cam.dist+v[1];const k=f/Math.max(30,d);return [cx+v[0]*k,cy-v[2]*k,v[1]];}};
+}
+
+function renderScene(ctx,W,H,cam,o){
+  o=o||{};const ortho=!!o.ortho;const mono=!!o.mono;
+  const PJ=makeProj(W,H,cam,ortho,o.scale||1);const R=PJ.R,f=PJ.f,cx=W/2,cy=H/2;
+  // collect triangles
+  let total=0;for(const p of PARTS)for(const s of p.sub)total+=s.m.f.length/3;
+  if(TRI.part.length<total){TRI.part=new Int32Array(total);TRI.sub=new Int16Array(total);TRI.tri=new Int32Array(total);TRI.depth=new Float32Array(total);}
+  if(PICK.part.length<total){PICK.scr=new Float32Array(total*6);PICK.part=new Int32Array(total);PICK.alpha=new Uint8Array(total);}
+  let n=0;
+  const secOn=OPT.secOn;const secX=OPT.secX;
+  for(const p of PARTS){
+    if(!partVisible(p))continue; if(o.hideRef&&p.group==='ref')continue;
+    for(let si=0;si<p.sub.length;si++){const s=p.sub[si];const w=s.ws,vs=s.vs;
+      for(let i=0;i<w.length;i+=3){const x=w[i]-cam.tx,y=w[i+1]-cam.ty,z=w[i+2]-cam.tz;
+        const x1=R[0]*x+R[1]*y+R[2]*z,y1=R[3]*x+R[4]*y+R[5]*z,z1=R[6]*x+R[7]*y+R[8]*z;
+        if(ortho){vs[i]=cx+x1*f;vs[i+1]=cy-z1*f;vs[i+2]=y1;}
+        else{const d=Math.max(30,cam.dist+y1);const k=f/d;vs[i]=cx+x1*k;vs[i+1]=cy-z1*k;vs[i+2]=y1;}}
+      const fm=s.m.f;const nT=fm.length/3;
+      for(let t=0;t<nT;t++){const a=fm[t*3]*3,b=fm[t*3+1]*3,c=fm[t*3+2]*3;
+        if(secOn){const wx=(w[a]+w[b]+w[c])/3;if(wx>secX)continue;}
+        const nx=s.nrm[t*3],ny=s.nrm[t*3+1],nz=s.nrm[t*3+2];
+        const vy=R[3]*nx+R[4]*ny+R[5]*nz; // normal depth comp
+        if(s.closed&&vy>0.02&&!OPT.cutaway)continue; // back-face cull
+        TRI.part[n]=p.idx;TRI.sub[n]=si;TRI.tri[n]=t;TRI.depth[n]=(vs[a+2]+vs[b+2]+vs[c+2])/3+s.b+(p.group==='ref'?80:0)+(s.a<0.6?-50:0);n++;}
+    }
+  }
+  TRI.n=n;
+  const order=new Uint32Array(n);for(let i=0;i<n;i++)order[i]=i;
+  const arr=Array.from(order).sort((i,j)=>TRI.depth[j]-TRI.depth[i]);
+  ctx.lineJoin='round';
+  const hi=OPT.hi;
+  let lastA=1;
+  PICK.n=0;
+  for(let q=0;q<n;q++){const i=arr[q];const p=PARTS[TRI.part[i]];const s=p.sub[TRI.sub[i]];const t=TRI.tri[i];
+    const fm=s.m.f,vs=s.vs;const a=fm[t*3]*3,b=fm[t*3+1]*3,c=fm[t*3+2]*3;
+    let nx=s.nrm[t*3],ny=s.nrm[t*3+1],nz=s.nrm[t*3+2];
+    let vx=R[0]*nx+R[1]*ny+R[2]*nz,vy=R[3]*nx+R[4]*ny+R[5]*nz,vz=R[6]*nx+R[7]*ny+R[8]*nz;
+    if(vy>0){vx=-vx;vy=-vy;vz=-vz;}
+    let alpha=s.a;if(OPT.cutaway&&s.shell)alpha=Math.min(alpha,0.16);
+    let isSel=(p.idx===OPT.sel),isHov=(p.idx===OPT.hover),dim=false,tint=null,tAmt=0;
+    if(hi){if(hi.has(p.id)){tint=[0,170,255];tAmt=0.4;}else{alpha=Math.min(alpha,0.12);dim=true;}}
+    if(isSel){tint=[255,140,0];tAmt=0.55;}else if(isHov){tint=[255,220,120];tAmt=0.35;}
+    let lv=s.emis?1.0:shadeLevel([vx,vy,vz]);
+    if(mono){const g=Math.round(150+90*lv);}
+    const lq=Math.round(lv*24);
+    const key=lq+(tint?'t'+tint[0]+tAmt:'');
+    let col=s.cache[key];if(!col){col=colStr(mono?[200,208,215]:s.c,lq/24,tint,tAmt);s.cache[key]=col;}
+    if(alpha!==lastA){ctx.globalAlpha=alpha;lastA=alpha;}
+    const x0=vs[a],y0=vs[a+1],x1=vs[b],y1=vs[b+1],x2=vs[c],y2=vs[c+1];
+    ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.lineTo(x2,y2);ctx.closePath();
+    if(OPT.wire||s.wire){ctx.strokeStyle=(s.emis?col:'rgba(40,60,80,0.75)');ctx.lineWidth=0.6;ctx.stroke();}
+    else{ctx.fillStyle=col;ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=0.7;ctx.stroke();}
+    const pi=PICK.n++;PICK.scr[pi*6]=x0;PICK.scr[pi*6+1]=y0;PICK.scr[pi*6+2]=x1;PICK.scr[pi*6+3]=y1;PICK.scr[pi*6+4]=x2;PICK.scr[pi*6+5]=y2;
+    PICK.part[pi]=p.idx;PICK.alpha[pi]=(s.a<0.4&&!dim)?1:0;
+  }
+  ctx.globalAlpha=1;
+  return PJ;
+}
+function pickAt(mx,my){
+  const hit=(pass)=>{for(let i=PICK.n-1;i>=0;i--){if(pass===0&&PICK.alpha[i])continue;if(pass===1&&!PICK.alpha[i])continue;
+    const o=i*6;const x0=PICK.scr[o],y0=PICK.scr[o+1],x1=PICK.scr[o+2],y1=PICK.scr[o+3],x2=PICK.scr[o+4],y2=PICK.scr[o+5];
+    const d=(y1-y2)*(x0-x2)+(x2-x1)*(y0-y2);if(Math.abs(d)<1e-6)continue;
+    const a=((y1-y2)*(mx-x2)+(x2-x1)*(my-y2))/d,b=((y2-y0)*(mx-x2)+(x0-x2)*(my-y2))/d,c=1-a-b;
+    if(a>=-0.02&&b>=-0.02&&c>=-0.02){const pp=PARTS[PICK.part[i]];if(pp.group==='ref'&&pass===0&&false)continue;return PICK.part[i];}}return -1;};
+  let r=hit(0);if(r<0)r=hit(1);return r;
+}
+'use strict';
+/* =============== Smart Hazard Protection System: geometry & component data =============== */
+/* Coordinate system: right-handed, mm. +X = wearer's LEFT, +Y = REAR (face looks toward -Y), +Z = UP. Origin = head-form centre. */
+const PI=Math.PI;
+const COL={white:'#eef1f2',rib:'#dde3e6',dark:'#262a2e',char:'#1a1d20',mid:'#3a3f45',lime:'#c6df00',cyan:'#14b8d4',visor:'#a8d8f0',cover:'#4c5258',skin:'#cdb8a2',coat:'#dfb50e',amber:'#e08a1e',green:'#25c26e',pcb:'#1f7a4d',cable:'#0e1012',gray:'#8a949d',blue:'#2c3e57',purple:'#6b4fa0',red:'#d9362b',steel:'#b9c2c9'};
+const domeY=z=>140*Math.sqrt(Math.max(0,1-Math.pow((z-40)/88,2)));
+const domeZ=(x,y)=>40+88*Math.sqrt(Math.max(0,1-Math.pow(x/112,2)-Math.pow(y/140,2)));
+const BX=(sx,sy,sz,t,R)=>xf(mkBox(sx,sy,sz),{t,R});
+const CYL=(r,h,t,dir,n)=>xf(mkCyl(r,r,h,n||20),{t,R:dir?M3.alignZ(dir):null});
+const ELL=(rx,ry,rz,t,nu,nv,o)=>xf(mkEll(rx,ry,rz,nu,nv,o),{t});
+
+/* ---- Reference mannequin (not part of the product) ---- */
+addPart({id:'REF-01',name:'Head form (reference only)',group:'ref',sub:[{m:ELL(82,98,100,[0,0,10],28,18),c:COL.skin,closed:true},{m:ELL(10,14,16,[0,-96,-6],10,8),c:COL.skin,closed:true}]});
+addPart({id:'REF-02',name:'Neck and torso (reference only)',group:'ref',sub:[{m:CYL(48,90,[0,6,-100],null,24),c:COL.skin,closed:true},{m:ELL(172,92,110,[0,12,-215],40,20),c:COL.coat,closed:true},{m:xf(mkCyl(1,1,90,32),{s:[108,62,1],t:[0,12,-362]}),c:COL.coat,closed:true}]});
+
+/* ---- Helmet ---- */
+const ribPts=x=>{const p=[];for(let y=-110;y<=110;y+=22)p.push([x,y,domeZ(x,y)+3]);return p;};
+addPart({id:'HEL-01',name:'Helmet shell',group:'helmet',label:true,expl:[0,0,170],sub:[{m:ELL(112,140,88,[0,0,40],56,26,{t1:PI/2}),c:COL.white,shell:true}]});
+addPart({id:'HEL-02',name:'Helmet brim / peak',group:'helmet',expl:[0,-10,150],sub:[{m:ELL(116,150,5,[0,-18,40],56,6),c:COL.white,closed:true,shell:true,b:10}]});
+addPart({id:'HEL-03',name:'Shell ribs (3)',group:'helmet',expl:[0,0,190],sub:[-38,0,38].map(x=>({m:mkTube(ribPts(x),5,6),c:COL.rib,b:-25}))});
+(function(){const band=mkSurf((u,v)=>{const a=u*2*PI;return [96*Math.cos(a),116*Math.sin(a),22+v*26];},40,2);
+  const s1=[],s2=[];for(let i=-10;i<=10;i++){const t=i/10;s1.push([96*t,0,40+60*(1-t*t)]);s2.push([0,116*t,40+62*(1-t*t)]);}
+  addPart({id:'HEL-04',name:'Head suspension (band + crown straps)',group:'helmet',expl:[0,0,95],sub:[{m:band,c:'#9aa3aa',b:40},{m:mkTube(s1,4.5,6),c:'#59626a',b:40},{m:mkTube(s2,4.5,6),c:'#59626a',b:40}]});})();
+addPart({id:'HEL-05',name:'Rear ratchet adjuster',group:'helmet',expl:[0,70,50],sub:[{m:BX(50,22,28,[0,124,36]),c:COL.dark,closed:true},{m:CYL(14,8,[0,137,36],[0,1,0],18),c:COL.mid,closed:true}]});
+addPart({id:'HEL-06',name:'Approved accessory slots (L, R, front, rear)',group:'helmet',expl:[0,0,160],sub:[{m:merge([BX(16,34,14,[105,0,60]),BX(16,34,14,[-105,0,60]),BX(44,14,14,[0,-137,60]),BX(44,14,14,[0,137,60])]),c:'#202427',closed:true}]});
+
+/* ---- Respirator ---- */
+(function(){
+  const vc=[0,-56,5],rx=90,ry=64,rz=108,t0=0.395*PI,t1=0.55*PI;
+  addPart({id:'RSP-01',name:'Transparent visor (part of selected respirator)',group:'resp',label:true,expl:[0,-170,40],sub:[{m:ELL(rx,ry,rz,vc,32,10,{p0:PI,p1:2*PI,t0,t1}),c:COL.visor,a:0.30}]});
+  const pt=(th,ph)=>[vc[0]+rx*Math.sin(th)*Math.cos(ph),vc[1]+ry*Math.sin(th)*Math.sin(ph),vc[2]+rz*Math.cos(th)];
+  const loop=[];for(let i=0;i<=16;i++)loop.push(pt(t0,PI+PI*i/16));for(let i=1;i<=4;i++)loop.push(pt(t0+(t1-t0)*i/4,2*PI));
+  for(let i=1;i<=16;i++)loop.push(pt(t1,2*PI-PI*i/16));for(let i=1;i<4;i++)loop.push(pt(t1-(t1-t0)*i/4,PI));
+  addPart({id:'RSP-02',name:'Visor frame / rim',group:'resp',expl:[0,-170,40],sub:[{m:mkTube(loop,3.6,6,true),c:COL.char}]});
+  addPart({id:'RSP-03',name:'Facepiece (mask body)',group:'resp',label:true,expl:[0,-120,-30],sub:[{m:ELL(90,58,60,[0,-62,-38],30,14,{p0:PI,p1:2*PI,t0:0.05*PI,t1:0.97*PI}),c:'#23272b'}]});
+  const seal=[];for(let i=0;i<48;i++){const t=2*PI*i/48;const x=74*Math.cos(t),z=10+90*Math.sin(t);
+    const k=Math.max(0,1-Math.pow(x/82,2)-Math.pow((z-10)/100,2));seal.push([x,-98*Math.sqrt(k)-2,z]);}
+  addPart({id:'RSP-04',name:'Face seal (sealing interface)',group:'resp',expl:[0,-70,0],sub:[{m:mkTube(seal,4.5,6,true),c:'#111416'}]});
+  [[1,'L','Left'],[-1,'R','Right']].forEach(([s,k,nm],i)=>{
+    const d=[s*0.87,-0.5,0],c=[s*86.3,-110.5,-52];const R=M3.alignZ(d);
+    addPart({id:'RSP-0'+(5+i),name:nm+' cartridge (hazard-specific, TBD)',group:'resp',label:true,expl:[s*150,-60,-20],hb:true,
+      sub:[{m:xf(mkCyl(40,40,42,28),{R,t:c}),c:COL.dark,closed:true},{m:xf(mkCyl(41,41,9,28),{R,t:vadd(c,vscl(d,10))}),c:COL.lime,closed:true},{m:xf(mkCyl(34,34,3,24),{R,t:vadd(c,vscl(d,22))}),c:'#343a40',closed:true}]});});
+  addPart({id:'RSP-07',name:'Exhalation valve housing',group:'resp',expl:[0,-120,-60],sub:[{m:CYL(20,24,[0,-122,-56],[0,-1,0],20),c:COL.dark,closed:true},{m:CYL(14,6,[0,-135,-56],[0,-1,0],18),c:'#454b52',closed:true}]});
+  const ring=(z,rx2,ry2,a0,a1)=>{const p=[];for(let i=0;i<=30;i++){const t=a0+(a1-a0)*i/30;p.push([rx2*Math.sin(t),ry2*(-Math.cos(t))-2,z]);}return p;};
+  const sA=[[78,-62,-68],[62,-34,-68]].concat(ring(-68,60,72,1.25,2*PI-1.25)).concat([[-62,-34,-68],[-78,-62,-68]]);
+  const sB=[[88,-56,30],[84,-46,58]].concat(ring(58,80,96,1.3,2*PI-1.3)).concat([[-84,-46,58],[-88,-56,30]]);
+  addPart({id:'RSP-08',name:'Head harness straps (adjustable)',group:'resp',expl:[0,110,-30],hb:true,sub:[{m:mkTube(sA,5,6),c:COL.char},{m:mkTube(sB,5,6),c:COL.char}]});
+})();
+addPart({id:'RSP-09',name:'Seal / breathing-resistance sensing port accessory (IND-03)',group:'resp',kind:'research',expl:[-130,-60,-40],sub:[{m:BX(16,16,12,[-78,-96,-60]),c:COL.amber,closed:true}]});
+/* alternate configuration: PAPR / supplied air (schematic) */
+addPart({id:'RSP-10',name:'Alternate: PAPR / supplied-air unit + hose (schematic)',group:'resp',kind:'optional',expl:[0,80,-60],sub:[{m:BX(130,60,110,[0,110,-345]),c:'#41484f',closed:true},
+  {m:mkTube([[0,110,-290],[60,100,-210],[110,40,-200],[100,-40,-180],[70,-95,-120],[35,-118,-78]],10,8),c:'#303538'}]});
+
+/* ---- Neck and upper-chest cover ---- */
+const torsoK=z=>{const d=(z+215)/110;return Math.abs(d)>=1?0:Math.sqrt(1-d*d);};
+function coverPt(u,v,out){const th=u*2*PI;const front=Math.max(0,-Math.sin(th));const zb=-270-40*front;const z=-60+v*(zb+60);
+  const k=torsoK(z);const rx=Math.max(68,172*k+12),ry=Math.max(80,92*k+12);const o=out||0;
+  return [(rx+o)*Math.cos(th),12+(ry+o)*Math.sin(th),z];}
+addPart({id:'NEK-01',name:'Neck and upper-chest cover',group:'neck',label:true,expl:[0,0,-130],sub:[{m:mkSurf((u,v)=>coverPt(u,v),96,24),c:COL.cover,shell:true}]});
+(function(){const zp=[];for(let i=0;i<=16;i++)zp.push(coverPt(0.25,i/16,3));
+  addPart({id:'NEK-02',name:'Rear closure (zip / hook-and-loop, TBD)',group:'neck',expl:[0,60,-130],sub:[{m:mkTube(zp,2.6,5),c:'#15181b'}]});})();
+addPart({id:'NEK-03',name:'Smart Collar module (IND-04)',group:'neck',kind:'research',expl:[0,100,-140],sub:[{m:BX(50,22,26,[0,103,-82]),c:COL.amber,closed:true}]});
+addPart({id:'NEK-04',name:'Removable phase-change cooling insert (IND-09)',group:'neck',kind:'research',expl:[0,90,-90],sub:[{m:BX(90,12,60,[0,70,-95]),c:'#4fc3e0',a:0.9,closed:true}]});
+
+/* ---- Hearing protection ---- */
+[[1,'L','Left'],[-1,'R','Right']].forEach(([s,k,nm],i)=>{
+  const cx=s*112;const ringS=[],ringC=[];for(let j=0;j<40;j++){const t=2*PI*j/40;ringS.push([cx,4+44.5*Math.cos(t),-8+56.5*Math.sin(t)]);ringC.push([s*88,4+36*Math.cos(t),-8+50*Math.sin(t)]);}
+  addPart({id:'EAR-0'+(1+i),name:nm+' ear-cup shell (passive attenuation structure)',group:'hear',label:true,expl:[s*190,0,0],hb:true,sub:[{m:ELL(28,42,54,[cx,4,-8],24,14),c:'#24282c',closed:true,shell:true},{m:mkTube(ringS,4.2,6,true),c:COL.lime}]});
+  addPart({id:'EAR-0'+(3+i),name:nm+' ear cushion / acoustic seal',group:'hear',expl:[s*120,0,0],sub:[{m:mkTube(ringC,11,8,true),c:'#15181a'}]});
+});
+addPart({id:'EAR-05',name:'Ear-cup mounting arms (L, R)',group:'hear',expl:[0,0,60],sub:[1,-1].flatMap(s=>[[[s*104,-12,58],[s*110,-10,52],[s*112,-6,46]],[[s*104,20,58],[s*110,18,52],[s*112,14,46]]].map(p=>({m:mkTube(p,6,6),c:COL.dark})))});
+addPart({id:'EAR-06',name:'ANC electronics modules (L, R)',group:'hear',kind:'optional',expl:[0,0,100],sub:[{m:merge([BX(22,30,34,[114,4,-4]),BX(22,30,34,[-114,4,-4])]),c:COL.pcb,closed:true}]});
+addPart({id:'EAR-07',name:'ANC outer microphones (L, R)',group:'hear',kind:'optional',expl:[0,-30,60],sub:[{m:merge([CYL(4,4,[141,-14,12],[1,0,0],10),CYL(4,4,[-141,-14,12],[1,0,0],10)]),c:'#d8dde1',closed:true}]});
+addPart({id:'EAR-08',name:'Communication speakers (L, R)',group:'hear',kind:'optional',expl:[0,0,-50],sub:[{m:merge([CYL(17,6,[93,4,-8],[1,0,0],20),CYL(17,6,[-93,4,-8],[1,0,0],20)]),c:COL.gray,closed:true}]});
+addPart({id:'EAR-09',name:'Push-to-talk / acknowledge button (left cup)',group:'hear',kind:'optional',expl:[40,0,0],sub:[{m:CYL(13,8,[143,-12,-18],[1,0,0],20),c:COL.red,closed:true}]});
+addPart({id:'EAR-10',name:'In-cup alarm-aware / dosimetry microphones (IND-06)',group:'hear',kind:'research',expl:[0,40,-70],sub:[{m:merge([CYL(3,3,[92,24,-30],[1,0,0],10),CYL(3,3,[-92,24,-30],[1,0,0],10)]),c:COL.amber,closed:true}]});
+
+/* ---- Electronics: crown hub and helmet-mounted modules ---- */
+addPart({id:'ELC-01',name:'Crown hub enclosure',group:'elec',label:true,expl:[0,0,300],sub:[{m:BX(110,55,26,[0,-25,137]),c:'#22262a',closed:true,shell:true}]});
+addPart({id:'ELC-02',name:'Main PCB',group:'elec',expl:[0,0,240],sub:[{m:BX(92,42,2,[0,-25,132]),c:COL.pcb,closed:true}]});
+addPart({id:'ELC-03',name:'MCU + BLE module',group:'elec',expl:[-50,0,255],sub:[{m:BX(20,16,3,[-24,-25,134.5]),c:'#3b4148',closed:true}]});
+addPart({id:'ELC-04',name:'IMU (motion sensor)',group:'elec',expl:[0,0,270],sub:[{m:BX(8,8,2,[8,-30,134]),c:'#6b7279',closed:true}]});
+addPart({id:'ELC-05',name:'Temperature / humidity sensor (vented)',group:'elec',expl:[60,-60,255],sub:[{m:BX(14,14,8,[42,-56,138]),c:'#e6e9ec',closed:true}]});
+addPart({id:'ELC-06',name:'Local power regulation module',group:'elec',expl:[-60,40,245],sub:[{m:BX(22,14,5,[-38,-18,135.5]),c:'#7a5a26',closed:true}]});
+addPart({id:'ELC-07',name:'Audible alert (buzzer)',group:'elec',expl:[60,30,250],sub:[{m:CYL(11,6,[36,-8,135.5],null,18),c:'#16181a',closed:true}]});
+addPart({id:'ELC-08',name:'Location module (GNSS / BLE / UWB interface)',group:'elec',kind:'optional',expl:[60,-30,275],sub:[{m:BX(18,14,3,[30,-38,134.5]),c:'#2d5a8a',closed:true}]});
+addPart({id:'ELC-09',name:'Site uplink radio (LoRa / Wi-Fi, site dependent)',group:'elec',kind:'optional',expl:[-60,-30,280],sub:[{m:BX(24,16,3,[-34,-38,134.5]),c:'#2d5a8a',closed:true}]});
+(function(){const p=[];for(let i=-9;i<=9;i++){const a=i/10*0.95;p.push([112*Math.sin(a),-140*Math.cos(a),47]);}
+  addPart({id:'ELC-10',name:'LED status strip (front rim, peripheral view)',group:'elec',label:true,expl:[0,-90,150],sub:[{m:mkTube(p,3.5,6),c:COL.green,emis:true}]});})();
+addPart({id:'ELC-11',name:'Haptic motor pad (forehead band)',group:'elec',expl:[0,-60,60],sub:[{m:BX(36,10,8,[0,-112,35]),c:COL.purple,closed:true}]});
+addPart({id:'ELC-12',name:'Side control module (left) - NFC reader housing',group:'elec',label:true,expl:[90,0,120],sub:[{m:BX(30,62,36,[100,-40,88]),c:'#202428',closed:true,shell:true}]});
+addPart({id:'ELC-13',name:'E-field proximity sensing pod (NF-L1)',group:'elec',kind:'research',expl:[0,60,250],sub:[{m:CYL(18,12,[0,28,132],null,20),c:COL.amber,closed:true}]});
+addPart({id:'ELC-14',name:'Helmet lamp (optional)',group:'elec',kind:'optional',expl:[0,-80,170],sub:[{m:BX(44,26,26,[0,-100,108]),c:COL.char,closed:true},{m:CYL(9,6,[0,-114,108],[0,-1,0],16),c:'#bfe9ff',emis:true,closed:true}]});
+addPart({id:'ELC-15',name:'Camera (optional - off by default)',group:'elec',kind:'optional',expl:[-100,-60,130],sub:[{m:BX(30,58,28,[-100,-55,92]),c:COL.char,closed:true},{m:CYL(10,10,[-100,-88,92],[0,-1,0],18),c:'#2a4a6a',closed:true}]});
+addPart({id:'CHS-01',name:'Certified personal gas / O2 monitor (external, interface only)',group:'elec',label:true,expl:[70,-60,-60],sub:[{m:BX(60,25,85,[55,-92,-160]),c:'#e8b412',closed:true},{m:BX(40,2,24,[55,-105.5,-145]),c:'#1b2024',closed:true}]});
+addPart({id:'CHS-02',name:'Physiological strap (third-party, optional)',group:'elec',kind:'optional',expl:[0,-60,-60],sub:[{m:BX(56,16,30,[0,-99,-215]),c:'#3b6ea5',closed:true}]});
+
+/* ---- Power: battery pack options ---- */
+const BATT={
+ belt:{name:'Belt-mounted pack (preferred)',size:[28,110,70],c:[-142,12,-362],expl:[-120,0,-90],hbDelta:0},
+ rear:{name:'Rear helmet-mounted enclosure',size:[95,32,55],c:[0,152,62],expl:[0,110,40],hbDelta:1},
+ back:{name:'Back-mounted electronics pack',size:[130,50,120],c:[0,134,-200],expl:[0,110,0],hbDelta:0},
+ crown:{name:'Crown low-mass battery module',size:[80,40,22],c:[0,70,128],expl:[0,60,200],hbDelta:1}
+};
+let battOpt='belt';
+function battSubs(o){const s=BATT[o].size,c=BATT[o].c;
+  return {
+   case:[{m:BX(s[0],s[1],s[2],c),c:COL.blue,closed:true,shell:true}],
+   cells:[{m:BX(s[0]-8,s[1]-10,s[2]*0.45,[c[0],c[1],c[2]+s[2]*0.12]),c:'#9aa0a6',closed:true}],
+   bms:[{m:BX(s[0]-10,s[1]-12,2.5,[c[0],c[1],c[2]-s[2]*0.28]),c:COL.pcb,closed:true}],
+   conn:[{m:BX(Math.min(14,s[0]*0.5),8,6,[c[0],c[1]+s[1]/2+4,c[2]+s[2]*0.2]),c:COL.steel,closed:true}]};}
+function mainCablePath(o){
+  const tail=[[0,97,-110],[0,95,-75],[0,92,-35],[0,103,0],[0,146,36]];
+  const dome=[];[50,64,84,104,120].forEach(z=>dome.push([0,domeY(z)+4,z]));dome.push([0,40,130],[0,6,133]);
+  if(o==='belt')return [[-142,12,-334],[-130,50,-300],[-100,98,-250],[-45,114,-200],[-15,100,-150],[0,97,-110]].concat(tail.slice(1)).concat(dome);
+  if(o==='back')return [[0,134,-140],[0,108,-118]].concat(tail).concat(dome);
+  if(o==='rear')return [[0,152,92],[0,125,112],[0,80,120],[0,40,128],[0,6,133]];
+  return [[0,70,128],[0,40,131],[0,6,133]];}
+const bs=battSubs('belt');
+addPart({id:'PWR-01',name:'Battery pack enclosure (removable)',group:'power',label:true,expl:BATT.belt.expl,sub:bs.case});
+addPart({id:'PWR-02',name:'Cell block (chemistry / configuration TBD)',group:'power',expl:[BATT.belt.expl[0]-40,BATT.belt.expl[1],BATT.belt.expl[2]+60],sub:bs.cells});
+addPart({id:'PWR-03',name:'BMS + fuel-gauge + V/I monitor PCB',group:'power',expl:[BATT.belt.expl[0]-60,BATT.belt.expl[1],BATT.belt.expl[2]-30],sub:bs.bms});
+addPart({id:'PWR-04',name:'Charging connector (type TBD)',group:'power',expl:[BATT.belt.expl[0]-30,BATT.belt.expl[1]+60,BATT.belt.expl[2]],sub:bs.conn});
+(function(){const p=[];for(let i=0;i<40;i++){const t=2*PI*i/40;p.push([118*Math.cos(t),12+72*Math.sin(t),-362]);}
+  addPart({id:'PWR-05',name:'Waist belt (pack retention)',group:'power',expl:[0,0,-90],sub:[{m:mkTube(p,12,6,true),c:'#2b2f33'}]});})();
+function setBattery(o){battOpt=o;const s=battSubs(o);
+  const ids=['PWR-01','PWR-02','PWR-03','PWR-04'],keys=['case','cells','bms','conn'];
+  ids.forEach((id,i)=>{const p=PARTS.find(x=>x.id===id);rebuildPart(p,s[keys[i]]);const e=BATT[o].expl;p.expl=[e[0]+[0,-40,-60,-30][i]*(o==='belt'?1:0),e[1]+(i===3?60:0),e[2]+[0,60,-30,0][i]];});
+  const cab=PARTS.find(x=>x.id==='CAB-01');rebuildPart(cab,[{m:mkTube(mainCablePath(o),3,6),c:COL.cable}]);
+  PARTS.find(x=>x.id==='PWR-05').vis=(o==='belt');
+  worldUpdate();}
+
+/* ---- Cables ---- */
+addPart({id:'CAB-01',name:'Main power cable (pack to hub)',group:'cable',cableFlag:true,expl:[0,60,-20],sub:[{m:mkTube(mainCablePath('belt'),3,6),c:COL.cable}]});
+addPart({id:'CAB-02',name:'Hub to side control module cable',group:'cable',cableFlag:true,expl:[60,0,200],sub:[{m:mkTube([[60,-30,134],[96,-35,118],[100,-40,108]],2.5,6),c:COL.cable}]});
+addPart({id:'CAB-03',name:'Hub to ear-cup cables (L, R)',group:'cable',cableFlag:true,expl:[0,0,120],sub:[1,-1].map(s=>({m:mkTube([[s*40,10,132],[s*96,10,100],[s*106,6,60],[s*108,4,48]],2.5,6),c:COL.cable}))});
+addPart({id:'CAB-04',name:'Hub to camera cable (optional)',group:'cable',kind:'optional',cableFlag:true,expl:[-60,0,180],sub:[{m:mkTube([[-60,-40,133],[-95,-50,108],[-100,-55,100]],2.5,6),c:COL.cable}]});
+
+/* ---- NFC ---- */
+addPart({id:'NFC-01',name:'NFC reader antenna pad (side module)',group:'nfc',label:true,expl:[150,0,120],sub:[{m:BX(2,40,24,[115.5,-40,88]),c:COL.cyan,closed:true}]});
+const tagC=COL.cyan;
+addPart({id:'NFC-02',name:'NFC tag - helmet',group:'nfc',expl:[0,-40,190],sub:[{m:BX(28,2.5,18,[0,-109,98]),c:tagC,closed:true}]});
+addPart({id:'NFC-03',name:'NFC tag - respirator facepiece',group:'nfc',expl:[0,-130,-30],sub:[{m:BX(22,2.5,22,[-30,-116,-22]),c:tagC,closed:true}]});
+addPart({id:'NFC-04',name:'NFC tags - cartridges (L, R)',group:'nfc',expl:[0,-60,-20],sub:[1,-1].map(s=>({m:xf(mkBox(16,16,2),{R:M3.alignZ([s*0.87,-0.5,0]),t:[s*107,-122.5,-52]}),c:tagC,closed:true}))});
+addPart({id:'NFC-05',name:'NFC tags - ear defenders (L, R)',group:'nfc',expl:[0,0,80],sub:[1,-1].map(s=>({m:BX(16,16,2,[s*112,12,46.8]),c:tagC,closed:true}))});
+addPart({id:'NFC-06',name:'NFC tag - neck / chest cover',group:'nfc',expl:[0,-40,-130],sub:[{m:BX(22,2.5,22,[0,-83.5,-170]),c:tagC,closed:true}]});
+addPart({id:'NFC-07',name:'NFC target read volume (design target, TBD)',group:'nfc',virtual:true,expl:[150,0,120],sub:[{m:ELL(30,30,30,[115.5,-40,88],20,12),c:COL.cyan,a:0.2}]});
+
+/* visibility overrides */
+const _pv=partVisible;
+partVisible=function(p){if(p.id==='NFC-07')return OPT.nfcZone&&p.vis;return _pv(p);};
+
+/* ---- LINKS (overlay, dashed) ---- */
+const LINKS=[
+ {a:[0,-25,137],b:[55,-85,-160],t:'BLE (gas/O2 data in)',col:'#e08a1e'},
+ {a:[0,-25,137],b:[0,-96,-215],t:'BLE (optional strap)',col:'#3b6ea5',opt:true},
+ {a:[0,-25,137],b:[0,-25,330],t:'Uplink to gateway / phone (site dependent)',col:'#6b2d5c',arrow:true}
+];
+
+/* ---- Dimension annotations (provisional, assembled state) ---- */
+const DIMS=[
+ {a:[-112,-175,30],b:[112,-175,30],t:'Shell W 224 (prov.)'},
+ {a:[130,-140,38],b:[130,140,38],t:'Shell L 280 (prov.)'},
+ {a:[-140,-150,40],b:[-140,-150,128],t:'Shell rise 88'},
+ {a:[-90,-135,-70],b:[90,-135,-70],t:'Visor W 180'},
+ {a:[-175,4,-70],b:[175,4,-70],t:'Cup span 280'},
+ {a:[160,-60,-62],b:[160,-60,46],t:'Cup H 108'},
+ {a:[-55,-25,160],b:[55,-25,160],t:'Hub 110 x 55 x 26'},
+ {a:[0,-170,-60],b:[0,-170,-310],t:'Cover length ~250 (front)'},
+ {a:[-185,-60,-205],b:[185,-60,-205],t:'Cover shoulder span ~370'}
+];
+'use strict';
+/* =============== Component information, power model, workflow, checklist =============== */
+const S={P:'Modelled with provisional dimensions',SC:'Represented schematically',DS:'Requires a component datasheet',EL:'Requires electrical verification',ME:'Requires mechanical validation',SF:'Requires professional safety validation',EX:'Excluded, with justification'};
+const NOELEC='None (passive part)';
+const E3='3.3 V logic rail via local regulation (PLACEHOLDER draw - see Power tab)';
+const INFO={};
+function I(id,fn,elec,dim,mass,hb,st,src,note){INFO[id]={fn,elec:elec||NOELEC,dim:dim||'',mass:mass||0,hb:!!hb,st:st||[S.P],src:src||'',note:note||''};}
+I('REF-01','Scale reference for the head. Not a product part and not an anthropometric standard.','-','~164 x 196 x 200 (assumed)',0,false,[S.P],'Assumption','Real head sizes vary; helmet size range TBD.');
+I('REF-02','Reference neck and torso to show cover drape and belt-pack position. Not a product part.','-','~336 x 184 x 280 torso (assumed)',0,false,[S.P],'Assumption');
+I('HEL-01','Certified helmet shell (impact and electrical protection). Carries the hub only through manufacturer-approved interfaces.',NOELEC,'W 224 x L 280 x rise 88 (assumed envelope)',330,true,[S.P,S.ME,S.SF],'PDF 3.4, 13.3; dims assumed','Do not drill or cut a certified helmet without manufacturer approval. Envelope is a placeholder for the selected model.');
+I('HEL-02','Peak / brim. Shown for silhouette; part of the certified helmet.',NOELEC,'~ 32 mm peak beyond shell (assumed)',40,true,[S.P],'Assumption');
+I('HEL-03','Moulded ribs on the shell (visual design language, reference image).',NOELEC,'3 ribs, tube r5 (assumed)',10,true,[S.P],'Reference image');
+I('HEL-04','Head suspension band and crown straps. Adjustment range TBD (not in PDF).',NOELEC,'Band 192 x 232 x 26 (assumed)',90,true,[S.P,S.ME],'PDF 3.4 (suspension); dims assumed','Adjustment range and head-size coverage: TBD per helmet manufacturer.');
+I('HEL-05','Rear ratchet adjuster for suspension.',NOELEC,'50 x 22 x 28 (assumed)',30,true,[S.P,S.ME],'Assumption');
+I('HEL-06','Manufacturer-approved accessory slots (left, right, front, rear) used as the only attachment points.',NOELEC,'16x34x14 side; 44x14x14 front/rear (assumed)',20,true,[S.P,S.ME,S.SF],'PDF 13.3 (approved mounts)','Mounting-hole coordinates deliberately NOT given: no helmet modification without manufacturer approval.');
+I('RSP-01','Transparent visor of the selected certified respirator (full-face type).',NOELEC,'W ~180 x H ~122 (assumed)',150,true,[S.P,S.ME,S.SF],'PDF 3.1, 13.1','Optical class, impact rating and anti-fog performance come from the respirator maker: TBD.');
+I('RSP-02','Visor frame and rim.',NOELEC,'tube r3.6 (assumed)',40,true,[S.P],'Assumption');
+I('RSP-03','Facepiece (mask body) with nose and mouth region. Separate assembly that must not compromise the face seal.',NOELEC,'~ 180 x 116 x 120 (assumed)',400,true,[S.P,S.ME,S.SF],'PDF 3.1','Internal passages, airflow and pressure values are NOT modelled (not supplied).');
+I('RSP-04','Face-sealing interface following the face contour.',NOELEC,'tube r4.5 (assumed)',30,true,[S.P,S.ME,S.SF],'PDF 3.1, 20 (fit test)','Seal performance requires a fit test with the full ensemble donned.');
+I('RSP-05','Hazard-specific cartridge (left). Selection depends on the hazard assessment; no cartridge covers every substance.',NOELEC,'Ø80 x 42 (assumed)',200,true,[S.P,S.ME,S.SF],'PDF 3.2, 13.1','Part number and rating TBD per respirator maker. Replacement clearance shown in exploded view.');
+I('RSP-06','Hazard-specific cartridge (right).',NOELEC,'Ø80 x 42 (assumed)',200,true,[S.P,S.ME,S.SF],'PDF 3.2, 13.1');
+I('RSP-07','Exhalation valve housing.',NOELEC,'Ø40 x 24 (assumed)',40,true,[S.P,S.ME],'Assumption');
+I('RSP-08','Adjustable head harness straps (two arcs shown: nape and upper).',NOELEC,'tube r5 (assumed)',80,true,[S.P,S.ME],'PDF 3.1');
+I('RSP-09','Manufacturer-approved port for differential-pressure sensing (seal / resistance trend). Research stage only.','Sensor supply 3.3 V (PLACEHOLDER)','16 x 16 x 12 (assumed)',15,true,[S.SC,S.DS,S.EL,S.ME,S.SF],'PDF 18.2 IND-03','Needs respirator-maker cooperation and breathing-simulator tests. Must not alter certified performance.');
+I('RSP-10','Alternate configuration to cartridges: powered or supplied-air unit and hose. Schematic only. Its power is separate from monitoring electronics.','Blower power: TBD (separate supply)','130 x 60 x 110 unit (assumed)',1500,false,[S.SC,S.DS,S.ME,S.SF],'PDF 3.2, 15','A monitoring fault must never disable airflow.');
+I('NEK-01','Extended neck and upper-chest cover: full neck, side extensions, throat, rear coverage, chest extension, overlap with protective clothing.',NOELEC,'Length ~250 front; shoulder span ~370 (assumed)',300,false,[S.P,S.ME,S.SF],'PDF 3.3, 13.2','Fabric must be chosen for the actual hazard: TBD. No universal chemical or flame resistance is claimed.');
+I('NEK-02','Rear closure (zip or hook-and-loop) and detachable section interface.',NOELEC,'tube r2.6 (assumed)',20,false,[S.P],'Reference image; PDF 13.2');
+I('NEK-03','Smart Collar: neck IMU, bone-conduction microphone, collar temperature. Outside any chemical barrier layer.','3.3 V (PLACEHOLDER)','50 x 22 x 26 (assumed)',40,false,[S.P,S.DS,S.EL,S.ME],'PDF 18.2 IND-04');
+I('NEK-04','Removable encapsulated phase-change cooling pack in the collar. Benefit unproven.',NOELEC,'90 x 12 x 60 (assumed)',150,false,[S.P,S.ME],'PDF 18.2 IND-09');
+I('EAR-01','Left over-ear cup shell. Passive attenuation structure with yellow band (reference image).',NOELEC,'60 x 84 x 108 (assumed)',170,true,[S.P,S.ME,S.SF],'PDF 3.5, 13.4','Attenuation must be tested with the full ensemble.');
+I('EAR-02','Right over-ear cup shell.',NOELEC,'60 x 84 x 108 (assumed)',170,true,[S.P,S.ME,S.SF],'PDF 3.5, 13.4');
+I('EAR-03','Left removable cushion and acoustic sealing surface.',NOELEC,'ring r36x50, tube r11 (assumed)',20,true,[S.P,S.ME],'PDF 13.4');
+I('EAR-04','Right removable cushion and acoustic sealing surface.',NOELEC,'ring r36x50, tube r11 (assumed)',20,true,[S.P,S.ME],'PDF 13.4');
+I('EAR-05','Adjustable mounting arms to the helmet accessory slots; clearance for harness straps.',NOELEC,'tube r6 (assumed)',40,true,[S.P,S.ME],'PDF 13.4');
+I('EAR-06','Optional active noise-cancelling electronics. A supplement, never a substitute for certified hearing protection.','3.3 V (PLACEHOLDER 25 mA typ)','22 x 30 x 34 each (assumed)',30,true,[S.P,S.DS,S.EL],'PDF 3.5, 13.4');
+I('EAR-07','ANC outer reference microphones.','3.3 V, via ANC module','Ø8 x 4 (assumed)',6,true,[S.P,S.DS],'PDF 3.5');
+I('EAR-08','Communication speakers in the cups.','3.3 V / amplifier (PLACEHOLDER)','Ø34 x 6 (assumed)',20,true,[S.P,S.DS,S.EL],'PDF 3.7, 14.3');
+I('EAR-09','Large push-to-talk and one-gesture acknowledge button usable with gloves.','Digital input (negligible)','Ø26 x 8 (assumed)',8,true,[S.P,S.DS],'PDF 18.1 NF-L4, 14.3');
+I('EAR-10','In-cup microphones for alarm recognition and noise-dose logging. Research stage.','3.3 V (PLACEHOLDER)','Ø6 x 3 (assumed)',4,true,[S.SC,S.DS,S.EL,S.SF],'PDF 18.2 IND-06');
+I('ELC-01','Crown hub enclosure: houses the control electronics. Kept small to limit head-borne mass.',NOELEC,'110 x 55 x 26 (assumed)',60,true,[S.P,S.ME,S.SF],'PDF 12.2 C7, 13.3','Ingress/impact rating TBD. Zone-certified variant needed for explosive atmospheres (PDF IND-08).');
+I('ELC-02','Main PCB carrying MCU, IMU, regulation and connectors.',E3,'92 x 42 x 2 (assumed)',15,true,[S.P,S.EL],'PDF 12.2 C7');
+I('ELC-03','Low-power MCU with BLE (hub intelligence: hard limits first, then risk index).',E3,'20 x 16 x 3 (assumed)',5,true,[S.P,S.DS,S.EL],'PDF 12.2 C7, 14.2');
+I('ELC-04','IMU for fall, stillness and posture (man-down, NF-L4).',E3,'8 x 8 x 2 (assumed)',1,true,[S.P,S.DS,S.EL],'PDF 12.2 C10');
+I('ELC-05','Temperature / humidity sensor with vent, mounted on the outside of the hub. Gives local conditions only, not a diagnosis.',E3,'14 x 14 x 8 (assumed)',3,true,[S.P,S.DS,S.EL],'PDF 12.2 C9, 14.1','Accuracy and heat-gain from nearby electronics to be checked.');
+I('ELC-06','Local regulation from the pack voltage to logic rails.','Efficiency assumed in Power tab','22 x 14 x 5 (assumed)',8,true,[S.P,S.DS,S.EL],'PDF 15');
+I('ELC-07','Buzzer (audible alert). Used only where compatible with hearing protection; haptic and visual alerts come first.','5 V (PLACEHOLDER)','Ø22 x 6 (assumed)',4,true,[S.P,S.DS,S.EL],'PDF 14.2');
+I('ELC-08','Optional GNSS / BLE beacon / UWB interface for location and escape guidance.','3.3 V (PLACEHOLDER)','18 x 14 x 3 (assumed)',6,true,[S.P,S.DS,S.EL,S.SF],'PDF 12.2 C12, 18.2 IND-07','GNSS does not work indoors or underground. Location features are unvalidated.');
+I('ELC-09','Optional site uplink radio (LoRa / Wi-Fi / cellular as site requires).','3.3 V (PLACEHOLDER)','24 x 16 x 3 (assumed)',8,true,[S.P,S.DS,S.EL,S.SF],'PDF 12.2 C13, 14.3','Radio approval and RF in hazardous zones to be verified.');
+I('ELC-10','LED status strip following the front rim; levels per the PDF alert ladder (normal / advisory / warning / critical).','5 V (PLACEHOLDER)','Strip ~180 mm, tube r3.5 (assumed)',15,true,[S.P,S.DS,S.EL],'PDF 14.2 (alert ladder)','Peripheral-vision placement TBD. No display is placed in the line of sight (PDF excludes LCD).');
+I('ELC-11','Haptic motor pad against the forehead band.','3.3 V (PLACEHOLDER)','36 x 10 x 8 (assumed)',12,true,[S.P,S.DS,S.EL],'PDF 14.2');
+I('ELC-12','Side control module housing the NFC reader and status controls. Placed on the left side for easy scanning with a gloved hand.','3.3 V (PLACEHOLDER)','30 x 62 x 36 (assumed)',70,true,[S.P,S.EL,S.ME],'PDF 18.2 IND-05; reference image','Reference image shows a display on the helmet; the PDF excludes displays in the line of sight, so none is modelled.');
+I('ELC-13','Optional electric-field proximity advisory pod (literature-derived NF-L1). Advisory only: cannot prove a conductor is de-energised.','3.3 V (PLACEHOLDER)','Ø36 x 12 (assumed)',30,true,[S.P,S.DS,S.EL,S.SF],'PDF 18.1 NF-L1; source [1] abstract only','Needs characterisation at known voltages and distances and EMC testing.');
+I('ELC-14','Optional helmet lamp.','5 V (PLACEHOLDER)','44 x 26 x 26 (assumed)',60,true,[S.P,S.DS,S.EL,S.SF],'PDF 3.4 (optional light)');
+I('ELC-15','Optional camera, off by default (privacy and power burden per PDF).','5 V (PLACEHOLDER)','30 x 58 x 28 (assumed)',90,true,[S.P,S.DS,S.EL,S.SF],'PDF 13.3, 18.1 NF-L8; reference image','Shown because the reference image includes one; PDF retains it only as optional.');
+I('CHS-01','Certified personal gas / O2 monitor. External product; the hub only receives its data over BLE. Not designed or replaced by this system.','Own battery (not part of this budget)','~60 x 25 x 85 (typical class, assumed)',120,false,[S.SC,S.DS,S.SF],'PDF 12.2 C8, 14.1','Mounting position in the breathing zone is TBD. Generic sensors cannot replace it.');
+I('CHS-02','Optional third-party physiological strap (heat strain and distress context).','Own battery','~56 x 16 x 30 (assumed)',40,false,[S.SC,S.DS,S.SF],'PDF 18.1 NF-L5');
+I('PWR-01','Removable battery enclosure. Preferred location: belt pack, to minimise head-borne mass (PDF NF-L9). Other options can be selected.','Pack voltage: see Power tab (assumption)','Belt option 28 x 110 x 70 (assumed)',90,false,[S.P,S.EL,S.ME,S.SF],'PDF 15, 18.1 NF-L9','Battery separate from hot surfaces, contaminants and breathing-system parts. Zone certification TBD.');
+I('PWR-02','Cell block. Chemistry and configuration are not given in the PDF.','TBD (assumption in Power tab)','Inside enclosure (assumed)',150,false,[S.P,S.DS,S.EL,S.SF],'PDF 15');
+I('PWR-03','Protection (BMS), fuel gauge and voltage / current monitoring.','Quiescent: see Power tab','Inside enclosure (assumed)',10,false,[S.P,S.DS,S.EL],'PDF 15, 12.2 C15');
+I('PWR-04','Charging connector and access. Type TBD.',NOELEC,'12 x 8 x 6 (assumed)',5,false,[S.P,S.DS],'PDF 12.2 C15');
+I('PWR-05','Waist belt retaining the pack.',NOELEC,'tube r12 (assumed)',150,false,[S.P,S.ME],'Assumption');
+I('CAB-01','Main power cable from pack to hub, routed to avoid moving adjusters, sharp edges and snag points. Break-away connector and strain relief TBD.','Carries pack voltage (rating TBD)','Ø6 cable (assumed)',10,false,[S.SC,S.DS,S.ME],'PDF 12.2 C15, 21.2','Route under the neck-cover rear flap is TBD.');
+I('CAB-02','Cable from hub to side control module.','Low-voltage, digital','Ø5 (assumed)',3,false,[S.SC,S.ME],'Assumption');
+I('CAB-03','Cables from hub to each ear cup (ANC / comms).','Low-voltage, audio','Ø5 (assumed)',6,false,[S.SC,S.ME],'Assumption');
+I('CAB-04','Optional camera cable.','5 V (PLACEHOLDER)','Ø5 (assumed)',3,false,[S.SC,S.ME],'Assumption');
+I('NFC-01','NFC reader antenna on the outer face of the side module. Reads item IDs from tags.','3.3 V (PLACEHOLDER)','40 x 24 x 2 (assumed)',3,true,[S.P,S.DS,S.EL],'PDF 18.2 IND-05','Read range is TBD and must be verified in prototype testing.');
+['02:helmet','03:respirator facepiece','04:cartridges (L, R)','05:ear defenders (L, R)','06:neck / chest cover'].forEach(t=>{const [n,nm]=t.split(':');
+  I('NFC-'+n,'Passive NFC tag identifying the '+nm+' (serial, lot, inspection data held in a database). A tag does not prove the item is undamaged.',NOELEC,'~ 16-28 mm tag (assumed)',1,true,[S.P,S.DS],'PDF 18.2 IND-05');});
+I('NFC-07','Approximate user scanning volume around the reader. A design target to be verified, not a measured range.','-','Sphere r ~30 (design target, TBD)',0,false,[S.SC],'Assumption');
+
+/* kind labels */
+const KIND_LABEL={standard:'Standard',optional:'Optional',research:'Research-stage proposal'};
+const GROUP_LABEL={ref:'Reference mannequin',helmet:'Helmet',resp:'Respirator',neck:'Neck cover',hear:'Hearing',elec:'Electronics',nfc:'NFC',power:'Power',cable:'Cables'};
+
+/* ---------- Power model (all values are PLACEHOLDER estimates, editable) ---------- */
+const POWER=[
+ {n:'MCU + BLE module',v:3.3,t:12,p:130,d:100,m:'Base',on:true},
+ {n:'IMU (motion sensor)',v:3.3,t:1,p:4,d:100,m:'Base',on:true},
+ {n:'Temp / humidity sensor',v:3.3,t:0.5,p:1.5,d:100,m:'Base',on:true},
+ {n:'NFC reader (polling)',v:3.3,t:15,p:120,d:10,m:'Base',on:true},
+ {n:'LED status strip',v:5,t:30,p:150,d:30,m:'Base',on:true},
+ {n:'Haptic motor',v:3.3,t:60,p:100,d:2,m:'Base',on:true},
+ {n:'Buzzer',v:5,t:30,p:30,d:2,m:'Base',on:true},
+ {n:'Fuel gauge + V/I monitor',v:3.3,t:0.1,p:0.2,d:100,m:'Base',on:true},
+ {n:'Gas/O2 monitor link (inside MCU; monitor has own battery)',v:3.3,t:0,p:0,d:100,m:'Base',on:true},
+ {n:'E-field proximity module (NF-L1)',v:3.3,t:2,p:5,d:100,m:'Research',on:false},
+ {n:'GNSS / BLE beacon / UWB module',v:3.3,t:25,p:45,d:100,m:'Optional',on:false},
+ {n:'Site uplink radio (LoRa / Wi-Fi)',v:3.3,t:30,p:120,d:10,m:'Optional',on:false},
+ {n:'ANC electronics (L + R)',v:3.3,t:25,p:60,d:100,m:'Optional',on:false},
+ {n:'Communication speakers + amp',v:3.3,t:20,p:80,d:20,m:'Optional',on:false},
+ {n:'Comm radio / PTT (pack voltage direct)',v:7.4,t:50,p:500,d:15,m:'Optional',on:false},
+ {n:'Smart Collar (IMU + mic)',v:3.3,t:3,p:10,d:100,m:'Research',on:false},
+ {n:'In-cup alarm-aware DSP (IND-06)',v:3.3,t:15,p:30,d:100,m:'Research',on:false},
+ {n:'Helmet lamp',v:5,t:100,p:300,d:50,m:'Optional',on:false},
+ {n:'Camera',v:5,t:250,p:500,d:100,m:'Optional',on:false}
+];
+const POWER_ASSUME={vbat:7.4,mah:3000,eta33:0.90,eta5:0.88,usable:0.80,reserve:0.20,chargeMa:1000,chargeEff:0.80};
+
+/* ---------- Workflow (PDF 17 and prompt stages) ---------- */
+const STAGES=[
+ {n:1,t:'PPE verification',d:'Worker presents each NFC-tagged item to the reader; the record is retrieved and checked for inspection status, due date and approved combination; LED/haptic shows the result.',parts:['NFC-01','NFC-02','NFC-03','NFC-04','NFC-05','NFC-06','NFC-07','ELC-12','ELC-10','ELC-11'],cls:'Independent proposal (IND-05), unvalidated',flow:'Tag -> reader -> hub -> record check -> LED / haptic'},
+ {n:2,t:'Donning and inspection',d:'Approved donning order; fit and seal checks; clearance check of helmet, ear cups and neck cover; battery and link status checked.',parts:['RSP-03','RSP-04','RSP-08','HEL-01','EAR-01','EAR-02','NEK-01','PWR-01'],cls:'Original concept; procedures by safety professional',flow:'Manual checks + hub self-test'},
+ {n:3,t:'Environmental monitoring',d:'Certified gas/O2 monitor data arrives by BLE; temperature/humidity and other sensors are read; the hub checks sensor status and alarm limits.',parts:['CHS-01','ELC-05','ELC-04','ELC-03','ELC-13'],cls:'Original concept (enhanced); sensors unvalidated',flow:'Monitor / sensors -> BLE / I2C -> hub'},
+ {n:4,t:'Local processing',d:'Hard limits first, then the combined risk index. Fall logic only if included. Sensor and battery faults are detected and shown as warnings, never as all-clear.',parts:['ELC-01','ELC-02','ELC-03','ELC-04','PWR-03'],cls:'Literature-derived (NF-L3, NF-L6); not validated',flow:'Hard-limit check -> risk index -> alert level'},
+ {n:5,t:'Worker alerts',d:'LED strip shows status; haptic pad gives tactile warnings; buzzer or headset audio only where compatible with hearing protection.',parts:['ELC-10','ELC-11','ELC-07','EAR-08','EAR-09'],cls:'Original concept (enhanced NF-L6)',flow:'Alert manager -> LED / haptic / audio'},
+ {n:6,t:'Communication',d:'Status and alerts go to phone, gateway or dashboard if configured. Loss of network must not stop local alerts (store-and-forward).',parts:['ELC-09','ELC-08','EAR-08','EAR-09'],cls:'Literature-derived (NF-L2); not validated',flow:'Hub -> site link -> gateway -> dashboard'},
+ {n:7,t:'Emergency response',d:'Hazard or equipment-fault indication; location, distress or man-down functions only if implemented and validated. No guarantee of rescue or evacuation.',parts:['ELC-04','ELC-08','EAR-09','ELC-10','NEK-03'],cls:'Literature-derived (NF-L4) and independent (IND-07); not validated',flow:'IMU spike + stillness -> prompt -> acknowledge -> Level 3 + location'},
+ {n:8,t:'Post-work maintenance',d:'Remove equipment per approved procedure; inspect and clean; NFC inspection and filter-change records may be updated by an authorised application.',parts:['NFC-01','NFC-02','NFC-03','NFC-04','RSP-05','RSP-06','PWR-04'],cls:'Original concept + independent (IND-05, IND-02)',flow:'Reader / app -> record update'}
+];
+
+/* ---------- NFC demo database (illustrative data, NOT real records) ---------- */
+const NFC_DB={
+ 'RF-001':{item:'Respirator facepiece',dueDays:+90,combo:'SET-1'},
+ 'CT-014':{item:'Cartridge pair',dueDays:-12,combo:'SET-1'},
+ 'HL-220':{item:'Helmet',dueDays:+120,combo:'SET-1'},
+ 'EA-033':{item:'Ear defenders',dueDays:+60,combo:'SET-1'},
+ 'NC-007':{item:'Neck / chest cover',dueDays:+45,combo:'SET-1'},
+ 'HL-999':{item:'Helmet (other model)',dueDays:+200,combo:'SET-2'}
+};
+const NFC_TAGS=[['RF-001','Respirator facepiece'],['CT-014','Cartridge pair'],['HL-220','Helmet A'],['HL-999','Helmet B (other model)'],['EA-033','Ear defenders'],['NC-007','Neck / chest cover'],['ZZ-404','Unregistered tag']];
+
+/* ---------- Compliance checklist (requirement -> component -> location -> spec -> status) ---------- */
+const CHECK=[
+ ['Helmet shell, suspension, accessory mounts (PDF 3.4, 13.3)','HEL-01..06','Head, top','Envelope W224 x L280 x rise 88 (assumed)',[S.P,S.ME,S.SF]],
+ ['Full-face respirator, visor, seal (3.1, 13.1)','RSP-01..04, RSP-07, RSP-08','Face','Visor W~180 x H~122 (assumed)',[S.P,S.ME,S.SF]],
+ ['Hazard-specific cartridges or supplied air (3.2)','RSP-05, RSP-06, RSP-10','Lateral mask / belt','Ø80 x 42 each (assumed); PAPR schematic',[S.P,S.SC,S.DS,S.SF]],
+ ['Neck and upper-chest cover (3.3, 13.2)','NEK-01, NEK-02','Neck to chest','Length ~250 front (assumed)',[S.P,S.ME,S.SF]],
+ ['Over-ear hearing protection, cushions, arms (3.5, 13.4)','EAR-01..05','Both sides of head','Cup 60 x 84 x 108 (assumed)',[S.P,S.ME,S.SF]],
+ ['Optional ANC electronics, mics, speakers (3.5)','EAR-06..08','Inside cups','22 x 30 x 34 module (assumed)',[S.P,S.DS,S.EL]],
+ ['Communication and push-to-talk (3.7, 14.3)','EAR-08, EAR-09, ELC-09','Cups / hub','Button Ø26 (assumed)',[S.P,S.DS,S.EL]],
+ ['Hub: MCU, BLE, IMU, regulation (12.2 C7, C10)','ELC-01..06','Crown','110 x 55 x 26 enclosure (assumed)',[S.P,S.DS,S.EL]],
+ ['Temperature / humidity sensing (C9)','ELC-05','Hub exterior','14 x 14 x 8 (assumed)',[S.P,S.DS,S.EL]],
+ ['Certified gas / O2 monitor interface (C8)','CHS-01','Chest (breathing zone, TBD)','~60 x 25 x 85 (assumed)',[S.SC,S.DS,S.SF]],
+ ['Electrical proximity advisory (NF-L1)','ELC-13','Crown','Ø36 x 12 (assumed)',[S.P,S.DS,S.EL,S.SF]],
+ ['Location: GNSS / beacon / UWB (C12, IND-07)','ELC-08','Hub','18 x 14 x 3 (assumed)',[S.P,S.DS,S.EL,S.SF]],
+ ['Site uplink and gateway (C13, C17)','ELC-09; gateway','Hub / site','24 x 16 x 3 (assumed); gateway off-model',[S.SC,S.DS,S.EL]],
+ ['LED indicators (C14)','ELC-10','Front rim','Strip ~180 mm (assumed)',[S.P,S.DS,S.EL]],
+ ['Haptic warning motor (C14)','ELC-11','Forehead band','36 x 10 x 8 (assumed)',[S.P,S.DS,S.EL]],
+ ['Audible alert (C14)','ELC-07','Hub','Ø22 x 6 (assumed)',[S.P,S.DS,S.EL]],
+ ['Battery, BMS, fuel gauge, V/I monitor (C15, NF-L9)','PWR-01..04','Belt (preferred)','28 x 110 x 70 (assumed)',[S.P,S.DS,S.EL,S.SF]],
+ ['Charging connector and replacement access','PWR-04','Pack end','12 x 8 x 6 (assumed)',[S.P,S.DS]],
+ ['Optional physiological strap (NF-L5)','CHS-02','Chest','~56 x 16 x 30 (assumed)',[S.SC,S.DS,S.SF]],
+ ['NFC reader, tags, workflow (IND-05)','NFC-01..07','Left side module; items','Tag 16-28 mm; read range TBD',[S.P,S.DS,S.EL]],
+ ['Verified man-down alert (NF-L4)','ELC-04, EAR-09, ELC-10','Hub / cups','Logic only; windows TBD',[S.SC,S.EL,S.SF]],
+ ['Risk index with hard-limit override (NF-L3, NF-L6)','ELC-03','Hub','Software; thresholds TBD',[S.SC,S.EL,S.SF]],
+ ['Three-tier offline-first architecture (NF-L2)','ELC-03, ELC-09; gateway','System','Architecture tab',[S.SC]],
+ ['Privacy-by-design data governance (NF-L8)','-','System','Policy; no camera by default',[S.SC]],
+ ['Respirator Limit Guard (IND-01)','ELC-03 (software)','Hub','Rule table TBD',[S.SC,S.SF]],
+ ['Dose-based cartridge advisor (IND-02)','ELC-03 (software), RSP-09','Hub','Software',[S.SC,S.SF]],
+ ['Seal / resistance sensing port (IND-03)','RSP-09','Facepiece','16 x 16 x 12 (assumed)',[S.P,S.DS,S.EL,S.ME,S.SF]],
+ ['Smart Collar (IND-04)','NEK-03','Rear collar','50 x 22 x 26 (assumed)',[S.P,S.DS,S.EL,S.ME]],
+ ['Alarm-aware hearing and dosimetry (IND-06)','EAR-10','Inside cups','Ø6 x 3 (assumed)',[S.SC,S.DS,S.EL,S.SF]],
+ ['Zone-aware gating, certified variant (IND-08)','-','Product line','Not modelled: needs certified hardware',[S.EX]],
+ ['PCM neck cooling insert (IND-09)','NEK-04','Collar','90 x 12 x 60 (assumed)',[S.P,S.ME]],
+ ['Peer buddy mesh (IND-10)','ELC-09','Hub / radios','Logic only',[S.SC]],
+ ['Optional camera, lamp (3.4)','ELC-14, ELC-15','Helmet','Camera 30x58x28; lamp 44x26x26 (assumed)',[S.P,S.DS,S.EL,S.SF]],
+ ['Cable routing, strain relief, connector access (12)','CAB-01..04','Helmet, back','Cable Ø3-6 (assumed)',[S.SC,S.ME]],
+ ['Mounting-hole coordinates (prompt 3)','-','Helmet','Not provided',[S.EX]],
+ ['Display in line of sight (reference image)','-','-','Excluded: PDF 8.3 rejects LCD in view',[S.EX]],
+ ['Automatic shut-off of respirator airflow (source [4])','-','-','Excluded: unsafe for life-support',[S.EX]],
+ ['AR glasses, EEG band, VSLAM cameras (PDF 8.3)','-','-','Excluded: not suitable',[S.EX]],
+ ['Native editable CAD and STEP export','-','-','Not produced: this file exports STL of concept geometry only',[S.EX]]
+];
+'use strict';
+/* =============== UI: 3D model tab =============== */
+const $=s=>document.querySelector(s);const $$=s=>Array.from(document.querySelectorAll(s));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cv=$('#cv'),ctx=cv.getContext('2d');const SET={motion:false,hover:true};
+if(!ctx){document.addEventListener('DOMContentLoaded',()=>{});}let W=800,H=600,dpr=1,dirty=true;
+function redraw(){dirty=true;}
+function resize(){const r=$('#stage').getBoundingClientRect();dpr=Math.min(2,window.devicePixelRatio||1);W=Math.max(200,r.width);H=Math.max(200,r.height);
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';redraw();}
+if(window.ResizeObserver){new ResizeObserver(()=>resize()).observe($('#stage'));}else window.addEventListener('resize',resize);
+
+const VIEWS={iso:[-0.65,0.30],front:[0,0.04],rear:[Math.PI,0.04],left:[-Math.PI/2,0.04],right:[Math.PI/2,0.04],top:[0,Math.PI/2-0.001],bottom:[0,-Math.PI/2+0.001]};
+function setView(k){const v=VIEWS[k];CAM.yaw=v[0];CAM.pitch=v[1];$$('#views button').forEach(b=>b.classList.toggle('on',b.dataset.v===k));redraw();}
+function fitView(){CAM.dist=1000;CAM.tx=0;CAM.ty=-10;CAM.tz=-70;redraw();}
+
+/* ---- drawing helpers ---- */
+function pill(c,txt,x,y,fg,bg,fs){c.font=(fs||11)+'px Segoe UI,Roboto,Arial,sans-serif';const w=c.measureText(txt).width+8;
+  c.fillStyle=bg||'rgba(255,255,255,.9)';c.fillRect(x-w/2,y-9,w,17);c.strokeStyle='rgba(60,80,95,.5)';c.strokeRect(x-w/2,y-9,w,17);
+  c.fillStyle=fg||'#1d2b36';c.textAlign='center';c.textBaseline='middle';c.fillText(txt,x,y);}
+function dimLine(c,pa,pb,txt){c.strokeStyle='#c2410c';c.fillStyle='#c2410c';c.lineWidth=1.3;c.beginPath();c.moveTo(pa[0],pa[1]);c.lineTo(pb[0],pb[1]);c.stroke();
+  const ang=Math.atan2(pb[1]-pa[1],pb[0]-pa[0]);[[pa,0],[pb,Math.PI]].forEach(([p,o])=>{const a=ang+o;c.beginPath();c.moveTo(p[0],p[1]);
+    c.lineTo(p[0]+9*Math.cos(a+0.4),p[1]+9*Math.sin(a+0.4));c.lineTo(p[0]+9*Math.cos(a-0.4),p[1]+9*Math.sin(a-0.4));c.closePath();c.fill();
+    c.beginPath();c.moveTo(p[0]-5*Math.sin(ang),p[1]+5*Math.cos(ang));c.lineTo(p[0]+5*Math.sin(ang),p[1]-5*Math.cos(ang));c.stroke();});
+  pill(c,txt,(pa[0]+pb[0])/2,(pa[1]+pb[1])/2,'#7c2d12','rgba(255,247,237,.95)',10.5);}
+function triad(c,R,x,y){const ax=[[1,0,0,'#d33','X'],[0,1,0,'#2a8a3a','Y'],[0,0,1,'#2a5bd3','Z']];c.lineWidth=2;c.font='bold 11px sans-serif';
+  ax.forEach(a=>{const v=M3.app(R,[a[0],a[1],a[2]]);c.strokeStyle=a[3];c.fillStyle=a[3];c.beginPath();c.moveTo(x,y);c.lineTo(x+v[0]*34,y-v[2]*34);c.stroke();c.textAlign='center';c.fillText(a[4],x+v[0]*44,y-v[2]*44+3);});}
+
+function drawScene(){
+  ctx.setTransform(dpr,0,0,dpr,0,0);const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#f3f7fa');g.addColorStop(1,'#c9d6df');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  const PJ=makeProj(W,H,CAM,false);
+  ctx.strokeStyle='rgba(80,100,115,.25)';ctx.lineWidth=1;
+  for(let i=-500;i<=500;i+=100){let a=PJ.proj([i,-500,-395]),b=PJ.proj([i,500,-395]);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
+    a=PJ.proj([-500,i,-395]);b=PJ.proj([500,i,-395]);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();}
+  if(OPT.nfcZone){const p=PARTS.find(x=>x.id==='NFC-07');p.sub[0].a=SET.motion?0.2:0.16+0.12*Math.sin(OPT.time*0.005);}
+  renderScene(ctx,W,H,CAM,{});
+  // links
+  if($('#o-link').checked&&OPT.explode<0.02){LINKS.forEach(l=>{const a=PJ.proj(l.a),b=PJ.proj(l.b);ctx.setLineDash([6,5]);ctx.strokeStyle=l.col;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();ctx.setLineDash([]);
+    if(l.arrow){ctx.fillStyle=l.col;ctx.beginPath();ctx.arc(b[0],b[1],4,0,7);ctx.fill();}
+    if(OPT.labels)pill(ctx,l.t,(a[0]+b[0])/2,(a[1]+b[1])/2,'#fff',l.col,10);});}
+  // dimensions
+  if(OPT.dims&&OPT.explode<0.02){DIMS.forEach(d=>dimLine(ctx,PJ.proj(d.a),PJ.proj(d.b),d.t));
+    const bt=BATT[battOpt];const s=bt.size,c=bt.c;dimLine(ctx,PJ.proj([c[0],c[1]-s[1]/2,c[2]+s[2]/2+14]),PJ.proj([c[0],c[1]+s[1]/2,c[2]+s[2]/2+14]),'Pack '+s[0]+' x '+s[1]+' x '+s[2]+' (prov.)');}
+  // labels
+  PARTS.forEach(p=>{if(!partVisible(p))return;const show=(OPT.labels&&p.label)||p.idx===OPT.sel||p.idx===OPT.hover;if(!show)return;
+    const c=[p.center[0]+p.off[0],p.center[1]+p.off[1],p.center[2]+p.off[2]];const s=PJ.proj(c);
+    pill(ctx,p.id,s[0],s[1]-12,p.idx===OPT.sel?'#fff':'#1d2b36',p.idx===OPT.sel?'#e07b00':'rgba(255,255,255,.92)');});
+  triad(ctx,PJ.R,48,H-48);
+  updateStatus();
+}
+let lastT=0;let firstDraw=true;function frame(t){OPT.time=t;if(dirty||(OPT.nfcZone&&!SET.motion)){try{drawScene();dirty=false;if(firstDraw){firstDraw=false;const l=$('#loading');if(l)l.style.display='none';}}catch(err){console.error(err);dirty=false;const f=$('#fatal');if(f)f.style.display='block';const l=$('#loading');if(l)l.style.display='none';}}requestAnimationFrame(frame);}
+
+/* ---- interaction ---- */
+let drag=null;
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+const ptrs=new Map();let pinch0=0,downPos=null;
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);downPos=[e.clientX,e.clientY];
+  drag={x:e.clientX,y:e.clientY,pan:(e.button===2||e.shiftKey||e.button===1),moved:false};cv.classList.add('drag');if(ptrs.size===2){const a=[...ptrs.values()];pinch0=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);}});
+cv.addEventListener('pointermove',e=>{
+  const r=cv.getBoundingClientRect();const mx=e.clientX-r.left,my=e.clientY-r.top;
+  if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+  if(ptrs.size===2){const a=[...ptrs.values()];const d=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);if(pinch0>0){CAM.dist=Math.min(4000,Math.max(250,CAM.dist*pinch0/d));pinch0=d;redraw();}return;}
+  if(drag){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(e.clientX-downPos[0])+Math.abs(e.clientY-downPos[1])>4)drag.moved=true;
+    if(drag.pan){const k=CAM.dist/(H*0.98);const R=viewRot(CAM);const w=M3.app(M3.T(R),[-dx*k,0,dy*k]);CAM.tx+=w[0];CAM.ty+=w[1];CAM.tz+=w[2];}
+    else{CAM.yaw-=dx*0.008;CAM.pitch=Math.max(-1.5,Math.min(1.5,CAM.pitch+dy*0.008));}
+    drag.x=e.clientX;drag.y=e.clientY;redraw();$$('#views button').forEach(b=>b.classList.remove('on'));}
+  else{const h=pickAt(mx,my);if(h!==OPT.hover){OPT.hover=h;redraw();}const tip=$('#tip');
+    if(h>=0&&SET.hover){tip.style.display='block';tip.style.left=(mx+14)+'px';tip.style.top=(my+10)+'px';tip.textContent=PARTS[h].id+'  '+PARTS[h].name;}else tip.style.display='none';}
+});
+cv.addEventListener('pointerup',e=>{ptrs.delete(e.pointerId);cv.classList.remove('drag');
+  if(drag&&!drag.moved&&ptrs.size===0){const r=cv.getBoundingClientRect();const h=pickAt(e.clientX-r.left,e.clientY-r.top);selectPart(h);}
+  if(ptrs.size===0){drag=null;pinch0=0;}});
+cv.addEventListener('pointerleave',()=>{OPT.hover=-1;$('#tip').style.display='none';redraw();});
+cv.addEventListener('wheel',e=>{e.preventDefault();CAM.dist=Math.min(4000,Math.max(250,CAM.dist*Math.exp(e.deltaY*0.0012)));redraw();},{passive:false});
+
+/* ---- selection and info panel ---- */
+function partDims(p){const b=p.bbox;return [(b[1][0]-b[0][0]),(b[1][1]-b[0][1]),(b[1][2]-b[0][2])].map(v=>v.toFixed(0)).join(' x ');}
+function selectPart(i){OPT.sel=i;if(i>=0)openInfo();redraw();renderInfo();updateStatus();$$('#plist div').forEach(d=>d.classList.toggle('sel',+d.dataset.i===i));
+  if(i>=0){const el=$('#plist div.sel');if(el)el.scrollIntoView({block:'nearest'});}}
+function statChips(st){return st.map(s=>'<span class="chip '+(s===S.P?'c-ass':s===S.EX?'c-gen':s===S.SC?'c-gen':s===S.SF?'c-tbd':'c-ass')+'">'+esc(s)+'</span>').join('');}
+function massSummary(){let tot=0,hb=0,cg=[0,0,0],M=0;
+  PARTS.forEach(p=>{const inf=INFO[p.id];if(!inf||!inf.mass)return;if(!partVisible(p)&&p.id!=='PWR-05')return;
+    let head=inf.hb;if(p.id.startsWith('PWR-0')&&p.id!=='PWR-05')head=BATT[battOpt].hbDelta===1;if(p.id==='PWR-05')return;
+    tot+=inf.mass;if(head){hb+=inf.mass;M+=inf.mass;cg[0]+=inf.mass*p.center[0];cg[1]+=inf.mass*p.center[1];cg[2]+=inf.mass*p.center[2];}});
+  return {tot,hb,cg:M?[cg[0]/M,cg[1]/M,cg[2]/M]:[0,0,0]};}
+function renderInfo(){const el=$('#infobody');const ms=massSummary();const bt=BATT[battOpt];
+  let h='';const p=PARTS[OPT.sel];
+  if(p){const inf=INFO[p.id]||{};const c=p.center;
+    h+='<div style="font-size:15px;font-weight:600">'+esc(p.name)+'</div><div class="small">ID '+p.id+'</div>';
+    h+='<div style="margin:5px 0"><span class="chip c-'+({standard:'std',optional:'opt',research:'res'}[p.kind])+'">'+KIND_LABEL[p.kind]+'</span><span class="chip c-gen">'+GROUP_LABEL[p.group]+'</span></div>';
+    h+='<div class="kv"><div>Function</div><div>'+esc(inf.fn||'-')+'</div><div>Location</div><div>centre x '+c[0].toFixed(0)+', y '+c[1].toFixed(0)+', z '+c[2].toFixed(0)+' mm <span class="chip c-ass">provisional</span></div>';
+    h+='<div>Dimensions</div><div>'+esc(inf.dim||'-')+'<br><span class="small">model bounding box '+partDims(p)+' mm</span> <span class="chip c-ass">assumed</span></div>';
+    h+='<div>Mass</div><div>'+(inf.mass?inf.mass+' g':'-')+' <span class="chip c-ass">provisional estimate</span></div>';
+    h+='<div>Electrical</div><div>'+esc(inf.elec||'-')+'</div><div>Source</div><div>'+esc(inf.src||'-')+'</div></div>';
+    if(inf.note)h+='<div class="warn">'+esc(inf.note)+'</div>';
+    h+='<p class="grp-t" style="margin-top:12px">Validation status</p>'+statChips(inf.st||[]);
+    h+='<div class="btnrow" style="margin-top:8px"><button class="b" id="iso1">Isolate this part</button><button class="b" id="hide1">Hide this part</button></div>';
+  }else h+='<div class="empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l8 4.500v9L12 21l-8-4.500v-9z"/><path d="M12 12l8-4.500M12 12v9M12 12L4 7.500"/></svg><div><b>No component selected</b></div><div class="small">Click a part in the 3D view, or choose one under Components, to see its location, size, function, electrical needs and validation status.</div></div>';
+  h+='<p class="grp-t" style="margin-top:14px">Mass and balance <span class="chip c-ass">provisional</span></p><div class="kv"><div>Ensemble</div><div>'+(ms.tot/1000).toFixed(2)+' kg (visible parts, excl. reference)</div><div>Head-borne</div><div>'+(ms.hb/1000).toFixed(2)+' kg</div><div>Head CG</div><div>y '+ms.cg[1].toFixed(0)+' mm (+ = rear), z '+ms.cg[2].toFixed(0)+' mm</div></div>';
+  h+='<p class="small">Masses are placeholder estimates, not weighed values. The neck cover rests on the shoulders; the belt pack is not head-borne.</p>';
+  h+='<p class="grp-t" style="margin-top:14px">Battery location</p><div style="font-weight:600">'+esc(bt.name)+'</div><div class="small">Pack envelope '+bt.size.join(' x ')+' mm (assumed). Head-borne: '+(bt.hbDelta?'yes':'no')+'.</div>';
+  h+='<table style="margin-top:5px"><tr><th>Option</th><th>Head mass</th><th>Notes</th></tr>'
+   +'<tr><td>Belt pack (preferred)</td><td>none</td><td>Lowest head load; longer cable through neck-cover area</td></tr>'
+   +'<tr><td>Back pack</td><td>none</td><td>Space for larger pack; heat and snag risk</td></tr>'
+   +'<tr><td>Rear helmet</td><td>+ pack</td><td>Short cable; shifts CG rearward</td></tr>'
+   +'<tr><td>Crown module</td><td>+ pack</td><td>Smallest; limited capacity</td></tr></table>';
+  el.innerHTML=h;
+  const i1=$('#iso1');if(i1)i1.onclick=()=>{OPT.hi=new Set([p.id]);redraw();};
+  const h1=$('#hide1');if(h1)h1.onclick=()=>{p.vis=false;buildList();redraw();};
+}
+
+/* ---- part list ---- */
+function buildList(){const f=$('#filter').value.toLowerCase();const el=$('#plist');el.innerHTML='';
+  PARTS.forEach(p=>{if(f&&!(p.id.toLowerCase().includes(f)||p.name.toLowerCase().includes(f)))return;
+    const d=document.createElement('div');d.dataset.i=p.idx;if(p.idx===OPT.sel)d.className='sel';
+    d.innerHTML='<input type="checkbox" '+(p.vis?'checked':'')+'><span><b>'+p.id+'</b> <small>'+esc(p.name)+'</small></span>';
+    d.querySelector('input').onclick=e=>{e.stopPropagation();p.vis=e.target.checked;redraw();};
+    d.onclick=()=>selectPart(p.idx);el.appendChild(d);});}
+
+/* ---- controls ---- */
+function initControls(){
+  $$('#views button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
+  $('#explode').oninput=e=>{OPT.explode=e.target.value/100;$('#exv-o').textContent=e.target.value+'%';worldUpdate();redraw();};
+  $('#o-cut').onchange=e=>{OPT.cutaway=e.target.checked;redraw();};
+  $('#o-sec').onchange=e=>{OPT.secOn=e.target.checked;OPT.secX=+$('#secx').value;redraw();};
+  $('#secx').oninput=e=>{OPT.secX=+e.target.value;$('#secx-o').textContent=e.target.value+' mm';redraw();};
+  $('#o-wire').onchange=e=>{OPT.wire=e.target.checked;redraw();};
+  $('#o-lab').onchange=e=>{OPT.labels=e.target.checked;redraw();};
+  $('#o-dim').onchange=e=>{OPT.dims=e.target.checked;redraw();};
+  $('#o-nfc').onchange=e=>{OPT.nfcZone=e.target.checked;redraw();};
+  $('#o-cab').onchange=e=>{OPT.cables=e.target.checked;redraw();};
+  $('#o-link').onchange=redraw;
+  $$('.kind').forEach(c=>c.onchange=()=>{OPT.showKinds[c.dataset.k]=c.checked;redraw();});
+  $$('.grp').forEach(c=>c.onchange=()=>{PARTS.forEach(p=>{if(p.group===c.dataset.g)p.vis=c.checked;});buildList();redraw();});
+  const gb=$('#grps');['helmet','resp','neck','hear','elec','nfc','power'].forEach(g=>{const b=document.createElement('button');b.className='b on';b.textContent=GROUP_LABEL[g];b.onclick=()=>{b.classList.toggle('on');const on=b.classList.contains('on');PARTS.forEach(p=>{if(p.group===g)p.vis=on;});buildList();redraw();};gb.appendChild(b);});
+  const bs=$('#batsel');Object.keys(BATT).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=BATT[k].name;bs.appendChild(o);});
+  bs.onchange=e=>{setBattery(e.target.value);renderInfo();redraw();};
+  $('#hibat').onclick=()=>{OPT.hi=new Set(['PWR-01','PWR-02','PWR-03','PWR-04','PWR-05','CAB-01']);redraw();};
+  $('#clrhi').onclick=()=>{OPT.hi=null;redraw();};
+  $('#filter').oninput=buildList;
+  $('#png').onclick=()=>{drawScene();cv.toBlob(b=>dl(b,'smart-hazard-protection-view.png'));};
+  $('#stl').onclick=exportSTL;
+}
+function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
+function exportSTL(){const tris=[];PARTS.forEach(p=>{if(p.group==='ref'||p.virtual||!p.vis)return;if(OPT.showKinds[p.kind]===false)return;
+  p.sub.forEach(s=>{const f=s.m.f,v=s.base;for(let t=0;t<f.length;t+=3){const a=f[t]*3,b=f[t+1]*3,c=f[t+2]*3;tris.push([v[a],v[a+1],v[a+2],v[b],v[b+1],v[b+2],v[c],v[c+1],v[c+2]]);}});});
+  const buf=new ArrayBuffer(84+tris.length*50);const dv=new DataView(buf);const hd='Smart Hazard Protection System concept geometry (mm) - NOT CAD, NOT certified';for(let i=0;i<hd.length&&i<80;i++)dv.setUint8(i,hd.charCodeAt(i));
+  dv.setUint32(80,tris.length,true);let o=84;tris.forEach(t=>{const e1=[t[3]-t[0],t[4]-t[1],t[5]-t[2]],e2=[t[6]-t[0],t[7]-t[1],t[8]-t[2]];const n=vnorm(vcross(e1,e2));
+    dv.setFloat32(o,n[0],true);dv.setFloat32(o+4,n[1],true);dv.setFloat32(o+8,n[2],true);for(let k=0;k<9;k++)dv.setFloat32(o+12+k*4,t[k],true);dv.setUint16(o+48,0,true);o+=50;});
+  dl(new Blob([buf],{type:'model/stl'}),'smart-hazard-protection-concept.stl');}
+function setLed(hexc){const p=PARTS.find(x=>x.id==='ELC-10');p.sub[0].c=hex(hexc);p.sub[0].cache={};p.sub[0].cacheSel={};redraw();}
+
+/* ================= Application shell: panels, status, dialogs, reset, keyboard ================= */
+const isMobile=()=>window.matchMedia('(max-width:860px)').matches;
+function openInfo(){const pm=$('#pane-model');if(isMobile()){pm.classList.remove('show-left');pm.classList.add('show-right');}else pm.classList.remove('hide-right');syncToggles();}
+function syncToggles(){const pm=$('#pane-model');const m=isMobile();
+  $('#tg-left').setAttribute('aria-pressed',m?pm.classList.contains('show-left'):!pm.classList.contains('hide-left'));
+  $('#tg-right').setAttribute('aria-pressed',m?pm.classList.contains('show-right'):!pm.classList.contains('hide-right'));
+  $('#tg-left').classList.toggle('on',$('#tg-left').getAttribute('aria-pressed')==='true');$('#tg-right').classList.toggle('on',$('#tg-right').getAttribute('aria-pressed')==='true');}
+function togglePanel(side){const pm=$('#pane-model');
+  if(isMobile()){const other=side==='left'?'right':'left';pm.classList.remove('show-'+other);pm.classList.toggle('show-'+side);}
+  else pm.classList.toggle('hide-'+side);syncToggles();}
+function updateStatus(){const p=PARTS[OPT.sel];const s=$('#st-sel'),d=$('#st-dim'),c=$('#st-cam');if(!s)return;
+  if(p){s.textContent=p.id+'  '+p.name;d.textContent='bbox '+partDims(p)+' mm (provisional)';}
+  else{s.textContent=OPT.hover>=0?'Hover: '+PARTS[OPT.hover].id+'  '+PARTS[OPT.hover].name:'No selection';d.textContent='';}
+  c.textContent='Zoom '+(1000/CAM.dist).toFixed(2)+'x  |  '+(CAM.yaw*57.3%360).toFixed(0)+'\u00b0 / '+(CAM.pitch*57.3).toFixed(0)+'\u00b0';}
+const POWER0=JSON.stringify(POWER),ASSUME0=JSON.stringify(POWER_ASSUME);
+function resetAll(){
+  Object.assign(OPT,{explode:0,cutaway:false,secOn:false,secX:0,wire:false,labels:false,dims:false,nfcZone:false,cables:true,sel:-1,hover:-1,hi:null});
+  OPT.showKinds={standard:true,optional:true,research:true};PARTS.forEach(p=>p.vis=true);
+  const ck={'o-cut':false,'o-sec':false,'o-wire':false,'o-lab':false,'o-dim':false,'o-nfc':false,'o-cab':true,'o-link':true};Object.keys(ck).forEach(k=>$('#'+k).checked=ck[k]);
+  $$('.kind').forEach(c=>c.checked=true);$$('.grp').forEach(c=>c.checked=true);$$('#grps button').forEach(b=>b.classList.add('on'));
+  $('#explode').value=0;$('#exv-o').textContent='0%';$('#secx').value=0;$('#secx-o').textContent='0 mm';$('#filter').value='';
+  setBattery('belt');$('#batsel').value='belt';worldUpdate();setLed('#25c26e');
+  JSON.parse(POWER0).forEach((r,i)=>Object.assign(POWER[i],r));Object.assign(POWER_ASSUME,JSON.parse(ASSUME0));if(typeof scanned!=='undefined')scanned=[];
+  fitView();setView('iso');buildList();renderInfo();updateStatus();redraw();}
+function confirmReset(){if(window.confirm('Reset all view, display, battery-location and power-table settings to their defaults?'))resetAll();}
+function initShell(){
+  if(!ctx){$('#fatal').style.display='block';$('#loading').style.display='none';return;}
+  const pm=$('#pane-model');if(!isMobile())pm.classList.add('hide-right');syncToggles();
+  $('#tg-left').onclick=()=>togglePanel('left');$('#tg-right').onclick=()=>togglePanel('right');
+  $('#close-left').onclick=()=>togglePanel('left');$('#close-right').onclick=()=>togglePanel('right');
+  window.addEventListener('resize',syncToggles);
+  const nz=(k)=>{CAM.dist=Math.min(4000,Math.max(250,CAM.dist*k));redraw();};
+  $('#zin').onclick=()=>nz(0.8);$('#zout').onclick=()=>nz(1.25);$('#zfit').onclick=()=>{fitView();setView('iso');};
+  $('#h-reset').onclick=()=>{showTab('model');fitView();setView('iso');};
+  $('#h-help').onclick=()=>$('#dlg-help').showModal();$('#h-set').onclick=()=>$('#dlg-set').showModal();
+  $$('dialog [data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+  $$('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d)d.close();}));
+  $('#resetall').onclick=confirmReset;$('#set-reset').onclick=()=>{confirmReset();};
+  $('#set-motion').onchange=e=>{SET.motion=e.target.checked;redraw();};
+  $('#set-status').onchange=e=>{$('#status').style.display=e.target.checked?'':'none';resize();};
+  $('#set-hover').onchange=e=>{SET.hover=e.target.checked;if(!SET.hover)$('#tip').style.display='none';};
+  $('#notice-t').onclick=()=>{const n=$('#notice');const o=n.classList.toggle('open');$('#notice-t').setAttribute('aria-expanded',o);$('#notice-t').textContent=o?'Hide':'Details';};
+  if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){SET.motion=true;$('#set-motion').checked=true;}
+  cv.addEventListener('keydown',e=>{const k=e.key;let used=true;
+    if(k==='ArrowLeft')CAM.yaw+=0.08;else if(k==='ArrowRight')CAM.yaw-=0.08;else if(k==='ArrowUp')CAM.pitch=Math.min(1.5,CAM.pitch+0.08);else if(k==='ArrowDown')CAM.pitch=Math.max(-1.5,CAM.pitch-0.08);
+    else if(k==='+'||k==='=')nz(0.85);else if(k==='-'||k==='_')nz(1.18);else if(k==='r'||k==='R'){fitView();setView('iso');}
+    else if(k==='Escape')selectPart(-1);else used=false;
+    if(used){e.preventDefault();redraw();}});
+  window.addEventListener('keydown',e=>{if(e.key==='?'&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))$('#dlg-help').showModal();});
+}
+
+/* ================= Friendly layer: scenes, camera animation, tour, welcome ================= */
+let camAnim=null;
+function animateCam(to,ms){const from={yaw:CAM.yaw,pitch:CAM.pitch,dist:CAM.dist,tx:CAM.tx,ty:CAM.ty,tz:CAM.tz};
+  let dy=to.yaw-from.yaw;dy=((dy+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI;
+  const dur=SET.motion?0:ms;if(!dur){Object.assign(CAM,to);redraw();return;}const t0=performance.now();camAnim=t0;
+  (function step(now){if(camAnim!==t0)return;let k=Math.min(1,(now-t0)/dur);k=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+    CAM.yaw=from.yaw+dy*k;CAM.pitch=from.pitch+(to.pitch-from.pitch)*k;CAM.dist=from.dist+(to.dist-from.dist)*k;CAM.tx=from.tx+(to.tx-from.tx)*k;CAM.ty=from.ty+(to.ty-from.ty)*k;CAM.tz=from.tz+(to.tz-from.tz)*k;
+    redraw();if(k<1)requestAnimationFrame(step);})(t0);}
+function setSwitch(id,v){const e=$('#'+id);if(e.checked!==v){e.checked=v;e.dispatchEvent(new Event('change'));}}
+function setExplode(v){const e=$('#explode');e.value=v;e.dispatchEvent(new Event('input'));}
+const ids=(pre)=>new Set(PARTS.filter(p=>pre.some(x=>p.id.startsWith(x))).map(p=>p.id));
+const SCENES={
+ overview:{t:'Overview',d:'The complete ensemble: helmet, respirator, neck cover, ear defenders and electronics. The belt pack sits on the hip.',cam:{yaw:-0.65,pitch:0.3,dist:1000,tx:0,ty:-10,tz:-70}},
+ inside:{t:'See inside',d:'Shells are transparent so the hub electronics, ANC modules and battery cells are visible. Labels show component IDs.',cam:{yaw:-0.65,pitch:0.3,dist:900,tx:0,ty:-10,tz:-30},cut:true,labels:true},
+ explode:{t:'Exploded view',d:'Parts are separated along their assembly directions. Use the Exploded view slider to adjust.',cam:{yaw:-0.7,pitch:0.25,dist:1700,tx:0,ty:0,tz:-40},explode:70},
+ resp:{t:'Respirator',d:'Visor, facepiece, face seal, cartridges and harness. The cartridge type depends on the hazard assessment and is still to be determined. Internal airflow is not modelled.',cam:{yaw:-0.45,pitch:0.1,dist:640,tx:0,ty:-60,tz:-10},hi:['RSP-0']},
+ hear:{t:'Hearing protection',d:'Passive ear cups with removable cushions. Active noise cancelling is optional and never replaces certified hearing protection.',cam:{yaw:-1.25,pitch:0.1,dist:620,tx:100,ty:0,tz:-10},hi:['EAR-']},
+ neck:{t:'Neck and upper-chest cover',d:'Extended neck cover with rear closure. The Smart Collar and cooling insert are research-stage options (shown with Transparent shells).',cam:{yaw:2.6,pitch:0.15,dist:900,tx:0,ty:50,tz:-150},hi:['NEK-'],cut:true},
+ nfc:{t:'NFC reader',d:'The reader sits in the left side module. The ring is the intended scanning volume, a design target to be verified. NFC tags on each item hold an ID only.',cam:{yaw:-1.35,pitch:0.15,dist:520,tx:100,ty:-30,tz:70},hi:['NFC-','ELC-12'],nfc:true},
+ batt:{t:'Battery',d:'Preferred location: belt pack, to keep weight off the head. Cable runs up the back to the crown hub. Change the location under Battery location.',cam:{yaw:1.2,pitch:0.2,dist:1000,tx:-60,ty:30,tz:-190},hi:['PWR-','CAB-01'],dims:true}
+};
+let sceneOn=null;
+function applyScene(k){const s=SCENES[k];if(!s)return;sceneOn=k;
+  setSwitch('o-cut',!!s.cut);setSwitch('o-lab',!!s.labels);setSwitch('o-nfc',!!s.nfc);setSwitch('o-dim',!!s.dims);setSwitch('o-wire',false);setSwitch('o-sec',false);
+  setExplode(s.explode||0);OPT.hi=s.hi?ids(s.hi):null;
+  $$('#views button').forEach(b=>b.classList.remove('on'));animateCam(s.cam,450);
+  $$('#scenes button').forEach(b=>b.classList.toggle('on',b.dataset.s===k));
+  $('#sn-t').textContent=s.t;$('#sn-d').textContent=s.d;$('#scene-note').style.display='block';
+  const t=$('#toast');if(t)t.classList.add('gone');redraw();}
+function initFriendly(){
+  $$('#scenes button').forEach(b=>b.onclick=()=>applyScene(b.dataset.s));
+  $('#scene-x').onclick=()=>{$('#scene-note').style.display='none';};
+  // hide toast after a few seconds or first interaction
+  setTimeout(()=>{const t=$('#toast');if(t)t.classList.add('gone');},7000);
+  cv.addEventListener('pointerdown',()=>{const t=$('#toast');if(t)t.classList.add('gone');$$('#scenes button').forEach(b=>b.classList.remove('on'));},{once:false});
+  // tour
+  const steps=[
+    {el:'#scenes',t:'Scenes',d:'These buttons jump to a part of the product and explain it. Try Respirator or See inside.'},
+    {el:'#views',t:'Camera views',d:'Switch between isometric, front, rear, left, right, top and bottom.'},
+    {el:'#left .panel-b',t:'Controls',d:'Quick controls are on top. Everything else is tucked into sections you can expand when needed.'},
+    {el:'#tg-right',t:'Details panel',d:'Click any part in the model, then open Details to see its size, function and validation status.'},
+    {el:'#tabs',t:'More tabs',d:'Power and battery runtime, NFC workflow, diagrams, drawings and the parts list are on these tabs.'}];
+  let si=-1,hl=null;
+  const clear=()=>{if(hl)hl.classList.remove('tour-hl');hl=null;};
+  const show=()=>{clear();if(si>=steps.length){endTour();return;}const s=steps[si];
+    if(isMobile()&&s.el==='#left .panel-b'){togglePanel('left');}
+    hl=$(s.el);if(hl)hl.classList.add('tour-hl');$('#tour-t').textContent=s.t;$('#tour-d').textContent=s.d;$('#tour-n').textContent='Step '+(si+1)+' of '+steps.length;$('#tour-next').textContent=si===steps.length-1?'Done':'Next';$('#tour').style.display='block';};
+  function endTour(){clear();$('#tour').style.display='none';si=-1;const pm=$('#pane-model');pm.classList.remove('show-left','show-right');syncToggles();}
+  window.startTour=()=>{showTab('model');if(!isMobile())$('#pane-model').classList.remove('hide-left');si=0;show();};
+  $('#tour-next').onclick=()=>{si++;show();};$('#tour-skip').onclick=endTour;
+  $('#w-tour').onclick=()=>{$('#dlg-welcome').close();window.startTour();};
+  $('#h-tour').onclick=()=>{$('#dlg-help').close();window.startTour();};
+  $$('#dlg-welcome [data-close]').forEach(b=>b.addEventListener('click',markSeen));
+  let seen=false;try{seen=localStorage.getItem('shps_seen')==='1';}catch(e){}
+  if(!seen)setTimeout(()=>{try{$('#dlg-welcome').showModal();}catch(e){}},500);
+  function markSeen(){try{localStorage.setItem('shps_seen','1');}catch(e){}}
+  $('#w-tour').addEventListener('click',markSeen);
+  // reset also clears scene
+  const _r=resetAll;resetAll=function(){_r();sceneOn=null;$$('#scenes button').forEach(b=>b.classList.remove('on'));$('#scene-note').style.display='none';};
+}
+'use strict';
+/* =============== UI: Power, NFC & workflow, architecture, drawings, BOM, about =============== */
+const f1=(x,d)=>Number(x).toFixed(d===undefined?2:d);
+/* ---------- Power ---------- */
+function calcPower(){const A=POWER_ASSUME;let typW=0,peakW=0,avgW=0,avgBatt=0,peakBatt=0;const rails={};
+  POWER.forEach(r=>{if(!r.on)return;const pt=r.v*r.t/1000,pp=r.v*r.p/1000,pa=pt*r.d/100;typW+=pt;peakW+=pp;avgW+=pa;
+    const eta=(r.v===A.vbat)?1:(r.v>4?A.eta5:A.eta33);avgBatt+=pa/eta;peakBatt+=pp/eta;
+    const k=r.v+' V';rails[k]=rails[k]||{t:0,p:0,a:0};rails[k].t+=r.t;rails[k].p+=r.p;rails[k].a+=r.t*r.d/100;});
+  const Wh=A.vbat*A.mah/1000,usable=Wh*A.usable;const run=avgBatt>0?usable/avgBatt:Infinity,runAlert=avgBatt>0?usable*(1-A.reserve)/avgBatt:Infinity;
+  return {typW,peakW,avgW,avgBatt,peakBatt,rails,Wh,usable,run,runAlert,loss:avgBatt-avgW,peakI:peakBatt/A.vbat,charge:(A.mah/A.chargeMa)/A.chargeEff};}
+function renderPower(){const R=calcPower(),A=POWER_ASSUME;
+  let h='<div class="card"><h2>Power budget, battery and runtime</h2><div class="bad"><b>All current values below are PLACEHOLDER preliminary engineering estimates.</b> The project PDF specifies no component currents, battery chemistry, capacity or discharge limits. Replace each value with the selected part\'s datasheet figure, then measure the built prototype. Nothing here is verified or measured.</div>';
+  h+='<div class="btnrow"><button class="b" data-pre="base">Preset: base safety monitoring only</button><button class="b" data-pre="comms">Preset: base + ANC + comms + uplink</button><button class="b" data-pre="all">Preset: everything enabled (worst case)</button></div>';
+  h+='<h3>Battery and conversion assumptions <span class="chip c-ass">provisional assumptions</span> <span class="chip c-tbd">chemistry, max discharge: TBD</span></h3><div class="small">Edit to test sensitivity.</div>';
+  h+='<table style="max-width:820px"><tr><th>Parameter</th><th>Value</th><th>Note</th></tr>';
+  const rows=[['vbat','Pack nominal voltage (V)','Assumed 2-cell Li-ion class; chemistry TBD'],['mah','Pack rated capacity (mAh)','Assumed; no spec in PDF'],['eta33','3.3 V regulator efficiency','Assumed buck converter'],['eta5','5 V regulator efficiency','Assumed buck/boost'],['usable','Usable fraction of rated energy','Derating for aging, temperature, cut-off'],['reserve','Low-battery threshold (fraction of usable left)','Advisory alert level (PDF Level 1)'],['chargeMa','Charge current (mA)','Charger TBD'],['chargeEff','Charge efficiency factor','Assumed']];
+  rows.forEach(r=>{h+='<tr><td>'+r[1]+'</td><td><input type="number" step="any" data-a="'+r[0]+'" value="'+A[r[0]]+'"></td><td class="small">'+r[2]+'</td></tr>';});
+  h+='</table><h3>Power table (per component)</h3><div style="overflow:auto"><table><tr><th>On</th><th>Component</th><th>Mode</th><th class="n">Operating voltage (V)</th><th class="n">Typical current (mA)</th><th class="n">Peak current (mA)</th><th class="n">Duty %</th><th class="n">Typical power (mW)</th><th class="n">Peak power (mW)</th><th class="n">Avg power (mW)</th><th>Basis</th></tr>';
+  POWER.forEach((r,i)=>{h+='<tr class="'+(r.on?'':'off')+'"><td><input type="checkbox" data-on="'+i+'" '+(r.on?'checked':'')+'></td><td>'+esc(r.n)+'</td><td>'+r.m+'</td>'
+    +['v','t','p','d'].map(k=>'<td class="n"><input type="number" step="any" data-r="'+i+'" data-k="'+k+'" value="'+r[k]+'"></td>').join('')
+    +'<td class="n">'+f1(r.v*r.t,1)+'</td><td class="n">'+f1(r.v*r.p,1)+'</td><td class="n">'+f1(r.v*r.t*r.d/100,1)+'</td><td><span class="chip c-ass">placeholder estimate</span></td></tr>';});
+  h+='</table></div><p class="small">Typical current = current while active. Average = typical x duty cycle. Power = V x I per component. Currents on different rails are NOT added together; they are converted to power first.</p>';
+  h+='<h3>Results <span class="chip c-calc">calculated from the placeholders above</span></h3><div class="grid2"><div><table><tr><th>Quantity</th><th class="n">Value</th></tr>';
+  h+='<tr><td>Total typical power (all enabled, all active)</td><td class="n">'+f1(R.typW*1000,0)+' mW ('+f1(R.typW,3)+' W)</td></tr>';
+  h+='<tr><td>Peak power (worst case, all peaks simultaneous)</td><td class="n">'+f1(R.peakW*1000,0)+' mW ('+f1(R.peakW,2)+' W)</td></tr>';
+  h+='<tr><td>Average load power (duty-cycled)</td><td class="n">'+f1(R.avgW*1000,0)+' mW</td></tr>';
+  h+='<tr><td>Regulator losses (avg)</td><td class="n">'+f1(R.loss*1000,0)+' mW</td></tr>';
+  h+='<tr><td>Average battery-side power</td><td class="n">'+f1(R.avgBatt*1000,0)+' mW</td></tr>';
+  h+='<tr><td>Peak battery-side current (worst case)</td><td class="n">'+f1(R.peakI*1000,0)+' mA (limit: TBD)</td></tr></table></div>';
+  h+='<div><table><tr><th>Battery</th><th class="n">Value</th></tr><tr><td>Nominal energy = V x Ah</td><td class="n">'+f1(R.Wh,1)+' Wh</td></tr><tr><td>Usable energy (derated)</td><td class="n">'+f1(R.usable,1)+' Wh</td></tr>';
+  h+='<tr><td><b>Estimated runtime</b> = usable Wh / avg battery W</td><td class="n"><b>'+(isFinite(R.run)?f1(R.run,1)+' h':'-')+'</b></td></tr><tr><td>Time to low-battery advisory</td><td class="n">'+(isFinite(R.runAlert)?f1(R.runAlert,1)+' h':'-')+'</td></tr>';
+  h+='<tr><td>Estimated charging time</td><td class="n">'+f1(R.charge,1)+' h (assumed charger)</td></tr></table></div></div>';
+  h+='<h3>Per-rail summary (typical / peak / average current, mA)</h3><table style="max-width:560px"><tr><th>Rail</th><th class="n">Typical</th><th class="n">Peak</th><th class="n">Average</th></tr>'+Object.keys(R.rails).map(k=>'<tr><td>'+k+'</td><td class="n">'+f1(R.rails[k].t,1)+'</td><td class="n">'+f1(R.rails[k].p,1)+'</td><td class="n">'+f1(R.rails[k].a,1)+'</td></tr>').join('')+'</table>';
+  h+='<div class="warn"><b>Safety separation.</b> Base monitoring is kept separate from optional high-power features. A monitoring fault must not disable certified respiratory protection; a PAPR/supplied-air unit (if used) has its own supply. Battery safety in explosive atmospheres is not established here.</div>';
+  h+='<h3>Selected battery location</h3><p>'+esc(BATT[battOpt].name)+' &mdash; envelope '+BATT[battOpt].size.join(' x ')+' mm (assumed). Change it on the 3D Model tab.</p></div>';
+  $('#powerroot').innerHTML=h;
+  $$('#powerroot [data-on]').forEach(c=>c.onchange=()=>{POWER[+c.dataset.on].on=c.checked;renderPower();});
+  $$('#powerroot [data-r]').forEach(c=>c.onchange=()=>{POWER[+c.dataset.r][c.dataset.k]=parseFloat(c.value)||0;renderPower();});
+  $$('#powerroot [data-a]').forEach(c=>c.onchange=()=>{POWER_ASSUME[c.dataset.a]=parseFloat(c.value)||0;renderPower();});
+  $$('#powerroot [data-pre]').forEach(b=>b.onclick=()=>{const k=b.dataset.pre;POWER.forEach(r=>{r.on=(k==='all')||(k==='base'&&r.m==='Base')||(k==='comms'&&(r.m==='Base'||/ANC|Communication|Comm radio|uplink/.test(r.n)));});renderPower();});
+}
+
+/* ---------- NFC + alert simulator + workflow ---------- */
+let scanned=[];
+function fmtDate(d){const t=new Date();t.setDate(t.getDate()+d);return t.toISOString().slice(0,10);}
+function nfcEval(){const known=scanned.filter(t=>NFC_DB[t]);const combos=new Set(known.map(t=>NFC_DB[t].combo));const mixed=combos.size>1;
+  const rows=scanned.map(t=>{const r=NFC_DB[t];if(!r)return {tag:t,item:'(unknown)',st:'UNKNOWN',cls:'bad',msg:'ID not found in database: do not rely on this item until its record is resolved.'};
+    if(r.dueDays<0)return {tag:t,item:r.item,due:fmtDate(r.dueDays),st:'OVERDUE',cls:'bad',msg:'Inspection overdue by '+(-r.dueDays)+' days.'};
+    if(mixed)return {tag:t,item:r.item,due:fmtDate(r.dueDays),st:'INCOMPATIBLE?',cls:'warn',msg:'Record belongs to '+r.combo+'; scanned items span more than one approved combination.'};
+    return {tag:t,item:r.item,due:fmtDate(r.dueDays),st:'OK',cls:'ok',msg:'Record valid; inspection due in '+r.dueDays+' days.'};});
+  const bad=rows.some(r=>r.cls==='bad'),warn=rows.some(r=>r.cls==='warn');return {rows,level:bad||warn?'warn':(rows.length?'ok':'none'),mixed};}
+const ALERTS=[{n:0,name:'Level 0 - Normal',col:'#25c26e',led:'Slow green pulse',hap:'none',aud:'none',rem:'Heartbeat logged'},
+ {n:1,name:'Level 1 - Advisory',col:'#f0b400',led:'Amber, steady',hap:'One short pulse',aud:'none',rem:'Logged; no notification'},
+ {n:2,name:'Level 2 - Warning',col:'#f08a00',led:'Flashing amber / red',hap:'Repeated pulses',aud:'Tone via headset (if compatible)',rem:'Supervisor notified'},
+ {n:3,name:'Level 3 - Critical',col:'#e5352b',led:'Red, steady',hap:'Strong continuous',aud:'Loud tone: leave area',rem:'Broadcast with last known location'}];
+function alertEval(){const o2=+$('#s-o2').value,gas=+$('#s-gas').value,bat=+$('#s-bat').value,md=$('#s-md').value,fault=$('#s-fault').checked,link=$('#s-link').checked;
+  let lv=0;const why=[];
+  if(o2<19.5||o2>23){lv=3;why.push('Hard limit: O2 '+o2.toFixed(1)+' % outside 19.5-23.0 % (seed range from source [2]; site limits TBD)');}
+  if(gas>=200){lv=3;why.push('Hard limit: gas reading '+gas+' % of alarm level (placeholder critical = 200 %, TBD)');}else if(gas>=100){lv=Math.max(lv,2);why.push('Gas reading at or above alarm level ('+gas+' %)');}
+  if(md==='unans'){lv=3;why.push('Man-down: no acknowledgement after prompt');}else if(md==='prompt'){lv=Math.max(lv,2);why.push('Man-down: IMU spike + stillness, prompting worker');}
+  if(fault){lv=Math.max(lv,2);why.push('Sensor fault shown as WARNING (never as all-clear)');}
+  if(bat<=20){lv=Math.max(lv,1);why.push('Battery at '+bat+' % (advisory threshold: assumption)');}
+  const a=ALERTS[lv];return {a,why,link};}
+function renderFlow(){
+  let h='<div class="card"><h2>NFC identification and PPE compatibility workflow (IND-05)</h2><div class="warn"><b>Demonstration data only.</b> The records below are invented to show the logic. NFC is not a gas detector or worker-safety sensor, and a tag is not proof that equipment is physically undamaged. Records can be incomplete or incorrect and need a valid database. Reader range (design target ~30 mm) is TBD pending prototype tests.</div>';
+  h+='<ol class="small"><li>Worker brings an NFC-tagged item near the reader on the left side module.</li><li>Reader returns the item identifier.</li><li>Hub or phone app retrieves the authorised record.</li><li>Inspection status, due date and approved-combination record are checked where records exist.</li><li>LED / haptic indicate the result; an authorised app may log the inspection event.</li><li>Overdue, unknown or incompatible items produce a clear warning.</li></ol>';
+  h+='<div class="btnrow">'+NFC_TAGS.map(t=>'<button class="b" data-scan="'+t[0]+'">Present tag: '+t[0]+' ('+esc(t[1])+')</button>').join('')+'<button class="b" id="nfcclr">Clear</button><button class="b" id="nfc3d">Show scan volume in 3D</button></div><div id="nfcout" style="margin-top:8px"></div></div>';
+  h+='<div class="card"><h2>Alert-ladder simulator (illustrative)</h2><div class="small">Hard limits are evaluated before any combined risk score. Thresholds are placeholders (TBD by the site hazard assessment). Loss of network never blocks local alerts.</div><div class="grid2"><div style="padding-right:14px">';
+  h+='<div class="kv" style="grid-template-columns:150px 1fr"><div>O2 (%)</div><div><input type="range" id="s-o2" min="15" max="25" step="0.1" value="20.9"> <b id="v-o2">20.9</b></div><div>Gas (% of alarm level)</div><div><input type="range" id="s-gas" min="0" max="300" step="5" value="0"> <b id="v-gas">0</b></div><div>Battery (%)</div><div><input type="range" id="s-bat" min="0" max="100" step="1" value="90"> <b id="v-bat">90</b></div><div>Man-down state</div><div><select id="s-md"><option value="none">None</option><option value="prompt">Prompt sent</option><option value="unans">No acknowledgement</option></select></div><div>Sensor fault</div><div><input type="checkbox" id="s-fault"></div><div>Network link lost</div><div><input type="checkbox" id="s-link"></div></div></div><div id="alout"></div></div></div>';
+  h+='<div class="card"><h2>Workflow and component mapping</h2><p class="small">Every stage below is a design proposal: none has been validated. Click a stage to highlight its components in the 3D model.</p>';
+  STAGES.forEach(s=>{h+='<div class="stagecard"><h4>Stage '+s.n+' - '+esc(s.t)+'</h4><div>'+esc(s.d)+'</div><div class="small">Data path: '+esc(s.flow)+'</div><div><span class="chip c-ass">'+esc(s.cls)+'</span><span class="chip c-tbd">not yet validated</span></div><div class="small">Components: '+s.parts.join(', ')+'</div><button class="b" data-st="'+s.n+'">Highlight in 3D</button></div>';});
+  h+='</div>';
+  $('#flowroot').innerHTML=h;
+  const out=()=>{const e=nfcEval();let o='';if(!e.rows.length)o='<div class="small">No tags presented yet.</div>';
+    else{o='<table><tr><th>Tag</th><th>Item</th><th>Inspection due</th><th>Result</th><th>Detail</th></tr>'+e.rows.map(r=>'<tr><td>'+r.tag+'</td><td>'+esc(r.item)+'</td><td>'+(r.due||'-')+'</td><td><b>'+r.st+'</b></td><td>'+esc(r.msg)+'</td></tr>').join('')+'</table>';
+      const lc=e.level==='ok'?'#25c26e':'#f08a00';o+='<p><span class="led" style="background:'+lc+'"></span><b>'+(e.level==='ok'?'All presented items pass: green LED, one short haptic pulse.':'Warning: amber LED, two long haptic pulses.')+'</b></p>';setLed(lc);}
+    const need=['RF-001','CT-014','HL-220','EA-033','NC-007'].filter(t=>!scanned.includes(t));if(scanned.length&&need.length)o+='<div class="small">Ensemble records not yet presented: '+need.join(', ')+'</div>';$('#nfcout').innerHTML=o;};
+  $$('[data-scan]').forEach(b=>b.onclick=()=>{if(!scanned.includes(b.dataset.scan))scanned.push(b.dataset.scan);out();});
+  $('#nfcclr').onclick=()=>{scanned=[];setLed('#25c26e');out();};$('#nfc3d').onclick=()=>{$('#o-nfc').checked=true;OPT.nfcZone=true;showTab('model');setView('left');};
+  out();
+  const al=()=>{const e=alertEval();$('#v-o2').textContent=(+$('#s-o2').value).toFixed(1);$('#v-gas').textContent=$('#s-gas').value;$('#v-bat').textContent=$('#s-bat').value;
+    let o='<div class="res"><span class="led" style="background:'+e.a.col+'"></span>'+e.a.name+'</div><div class="kv" style="margin-top:6px"><div>LED strip</div><div>'+e.a.led+'</div><div>Haptic</div><div>'+e.a.hap+'</div><div>Audio</div><div>'+e.a.aud+'</div><div>Remote</div><div>'+(e.link?'Uplink lost: local alerts continue; events buffered (store-and-forward)':e.a.rem)+'</div></div>';
+    o+='<ul class="small">'+(e.why.length?e.why.map(w=>'<li>'+esc(w)+'</li>').join(''):'<li>All inputs within placeholder limits</li>')+'</ul><div class="small">No automatic action ever reduces respiratory protection.</div>';$('#alout').innerHTML=o;setLed(e.a.col);};
+  ['#s-o2','#s-gas','#s-bat','#s-md','#s-fault','#s-link'].forEach(s=>$(s).oninput=al);al();
+  $$('[data-st]').forEach(b=>b.onclick=()=>{const st=STAGES.find(x=>x.n===+b.dataset.st);OPT.hi=new Set(st.parts);showTab('model');setView('iso');redraw();});
+}
+
+/* ---------- Architecture (SVG) ---------- */
+function svgBox(x,y,w,h,txt,fill,stroke,dash){const lines=txt.split('\n');return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="5" fill="'+(fill||'#e8f1f4')+'" stroke="'+(stroke||'#1f5f73')+'" stroke-width="1.4"'+(dash?' stroke-dasharray="6 4"':'')+'/>'
+ +lines.map((l,i)=>'<text x="'+(x+w/2)+'" y="'+(y+h/2+(i-(lines.length-1)/2)*14+4)+'" text-anchor="middle" font-size="11.5" fill="#12232e">'+esc(l)+'</text>').join('');}
+function svgArrow(x1,y1,x2,y2,col,dash){const a=Math.atan2(y2-y1,x2-x1);return '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+(col||'#1f5f73')+'" stroke-width="1.6"'+(dash?' stroke-dasharray="5 4"':'')+'/><polygon points="'+x2+','+y2+' '+(x2-9*Math.cos(a-0.4))+','+(y2-9*Math.sin(a-0.4))+' '+(x2-9*Math.cos(a+0.4))+','+(y2-9*Math.sin(a+0.4))+'" fill="'+(col||'#1f5f73')+'"/>';}
+function renderArch(){
+  let e='<svg viewBox="0 0 1060 470" width="100%" style="background:#fff;border:1px solid #cfd9e0">';
+  e+=svgBox(10,30,170,130,'BATTERY PACK (removable)\ncells: chemistry TBD\nBMS / protection\nfuel gauge + V/I monitor\ncharging port (TBD)','#dfe8f5','#2c4a7a');
+  e+=svgArrow(180,95,235,95);e+=svgBox(235,40,150,110,'HUB POWER INPUT\nconnector (TBD)\novercurrent protection (TBD)\nregulators 3.3 V / 5 V','#fff0d9','#a8650a');
+  e+=svgArrow(385,95,440,95);
+  const mods=[['MCU + BLE\n(hard limits, risk index,\nalert manager, log)',20],['Sensors: IMU, temp/humidity\noptional E-field, collar',92],['NFC reader',164],['Alert outputs: LED strip,\nhaptic, buzzer',224],['Comms: BLE, site uplink,\nradio / PTT (optional)',296],['ANC + audio (optional)',368],['High-power optional:\ncamera, lamp',410]];
+  mods.forEach(m=>{e+=svgBox(440,m[1],230,m[0].includes('\n')?56:34,m[0],'#e8f1f4','#1f5f73');});
+  e+=svgBox(440,372,230,0,'','none','none');
+  e+=svgBox(740,30,300,70,'CERTIFIED GAS / O2 MONITOR (external)\nown battery - BLE data to MCU','#fff4e0','#b26a00');e+=svgArrow(740,70,672,45,'#b26a00',true);
+  e+=svgBox(740,130,300,60,'SITE GATEWAY / PHONE / DASHBOARD\nrecords DB (NFC), alerts, logs (optional)','#f3e5f5','#6b2d5c');e+=svgArrow(672,320,740,175,'#6b2d5c',true);
+  e+=svgBox(740,220,300,50,'THIRD-PARTY STRAP (optional)\nown battery - BLE','#eef2f5','#5c6b78');e+=svgArrow(740,245,672,60,'#5c6b78',true);
+  e+=svgBox(10,300,360,70,'PAPR / SUPPLIED-AIR UNIT (alternate config.)\nSEPARATE supply - monitoring electronics\nhave NO control over airflow','#fde6e4','#b3261e');
+  e+=svgBox(10,390,1030,62,'CERTIFIED PROTECTION LAYER: respirator + filters, helmet, ear defenders, neck cover - NO electrical dependence; fully functional with all electronics OFF','#e3f4e8','#14532d',true);
+  e+='</svg>';
+  let d='<svg viewBox="0 0 1060 330" width="100%" style="background:#fff;border:1px solid #cfd9e0">';
+  d+=svgBox(10,20,140,50,'NFC tag\n(item ID)','#e0f4f8','#0e7c91');d+=svgArrow(150,45,200,45);d+=svgBox(200,20,130,50,'NFC reader','#e0f4f8','#0e7c91');d+=svgArrow(330,45,380,45);
+  d+=svgBox(380,10,200,70,'HUB MCU\nrecord check, hard limits,\nrisk index, alert manager','#cfe8ef','#17566b');
+  d+=svgBox(640,20,200,50,'Record store\n(phone / gateway DB)','#f3e5f5','#6b2d5c');d+=svgArrow(580,35,640,35,'#6b2d5c');d+=svgArrow(640,58,580,58,'#6b2d5c');
+  d+=svgBox(10,120,160,60,'Gas / O2 monitor\n(certified, BLE)','#fff4e0','#b26a00');d+=svgArrow(170,150,380,60,'#b26a00');
+  d+=svgBox(10,200,160,50,'IMU, temp/humidity,\nE-field (optional)','#e8f1f4','#1f5f73');d+=svgArrow(170,225,380,70);
+  d+=svgBox(10,265,160,45,'Battery status (fuel gauge)','#dfe8f5','#2c4a7a');d+=svgArrow(170,288,380,75);
+  d+=svgBox(380,150,200,50,'1. HARD LIMITS first\n2. risk index (fuzzy-fusion lite)','#fde6e4','#b3261e');d+=svgArrow(480,80,480,150);
+  d+=svgBox(380,230,200,50,'ALERT MANAGER\nlevels 0 - 3','#fff0d9','#a8650a');d+=svgArrow(480,200,480,230);
+  d+=svgBox(660,130,180,40,'LED strip','#e3f4e8','#14532d');d+=svgBox(660,180,180,40,'Haptic pad','#e3f4e8','#14532d');d+=svgBox(660,230,180,40,'Buzzer / headset audio','#e3f4e8','#14532d');
+  d+=svgArrow(580,255,660,150);d+=svgArrow(580,255,660,200);d+=svgArrow(580,255,660,250);
+  d+=svgBox(880,20,170,60,'Uplink (site dependent)\nstore-and-forward','#f3e5f5','#6b2d5c');d+=svgArrow(580,45,880,45,'#6b2d5c',true);
+  d+=svgBox(880,230,170,60,'Local event log\n(on hub, minimised data)','#eef2f5','#5c6b78');d+=svgArrow(840,250,880,255,'#5c6b78');
+  d+='</svg>';
+  let w='<svg viewBox="0 0 1060 230" width="100%" style="background:#fff;border:1px solid #cfd9e0">';
+  STAGES.forEach((s,i)=>{const x=10+i*130;w+=svgBox(x,20,120,96,'Stage '+s.n+'\n'+s.t.replace(' and ','\nand '),'#e8f1f4','#1f5f73');w+=(i<7?svgArrow(x+120,68,x+130,68):'');
+    w+='<rect x="'+x+'" y="126" width="120" height="22" rx="4" fill="#fff0d9" stroke="#e0a040"/><text x="'+(x+60)+'" y="141" font-size="10" text-anchor="middle" fill="#6a4300">'+(/Original/.test(s.cls)?'original concept':/Literature/.test(s.cls)?'literature-derived':'independent proposal')+'</text>';
+    w+='<rect x="'+x+'" y="152" width="120" height="22" rx="4" fill="#fde6e4" stroke="#c9463d"/><text x="'+(x+60)+'" y="167" font-size="10" text-anchor="middle" fill="#9a1f17">not yet validated</text>';});
+  w+='</svg>';
+  $('#archroot').innerHTML='<div class="card"><h2>Electrical block diagram</h2><p class="small">Battery &rarr; protection and power management &rarr; controller and sensor modules &rarr; alert outputs and communication. The certified protection layer (green, dashed) has no electrical dependence. Drawn for the belt-pack option.</p>'+e+'</div><div class="card"><h2>Component-level data-flow diagram</h2>'+d+'</div><div class="card"><h2>Workflow overview (8 stages)</h2>'+w+'<p class="small">Stage details and component mapping are on the NFC &amp; Workflow tab.</p></div>';
+}
+
+/* ---------- Drawings (orthographic) ---------- */
+const DV=[
+ {k:'front',t:'FRONT (looking +Y)',yaw:0,pitch:0,dims:[[[-112,0,152],[112,0,152],'Shell W 224'],[[-140,0,-75],[140,0,-75],'Cup span 280'],[[-90,0,-100],[90,0,-100],'Visor W ~180'],[[200,0,128],[200,0,-310],'Height 438 (helmet top to cover bottom)']]},
+ {k:'rear',t:'REAR (looking -Y)',yaw:Math.PI,pitch:0,dims:[[[-112,0,152],[112,0,152],'Shell W 224'],[[-185,0,-205],[185,0,-205],'Cover span ~370'],[[-55,0,168],[55,0,168],'Hub 110']]},
+ {k:'left',t:'LEFT (+X side)',yaw:-Math.PI/2,pitch:0,dims:[[[0,-140,152],[0,140,152],'Shell L 280'],[[0,-172,172],[0,140,172],'Overall with peak 312'],[[0,-38,-75],[0,46,-75],'Cup depth 84'],[[0,200,128],[0,200,-310],'Height 438']]},
+ {k:'right',t:'RIGHT (-X side)',yaw:Math.PI/2,pitch:0,dims:[[[0,-140,152],[0,140,152],'Shell L 280'],[[0,-38,-75],[0,46,-75],'Cup depth 84']]},
+ {k:'top',t:'TOP',yaw:0,pitch:Math.PI/2-0.0001,dims:[[[-112,-190,0],[112,-190,0],'Shell W 224'],[[140,-140,0],[140,140,0],'Shell L 280'],[[-140,170,0],[140,170,0],'Cup span 280']]},
+ {k:'bottom',t:'BOTTOM',yaw:0,pitch:-Math.PI/2+0.0001,dims:[[[-112,-190,0],[112,-190,0],'Shell W 224'],[[140,-140,0],[140,140,0],'Shell L 280']]}
+];
+function renderDrawings(){
+  let h='<div class="card"><h2>Six-view drawing sheet (orthographic, millimetres)</h2><div class="warn">All dimensions are <b>provisional design assumptions</b> for a generic helmet-respirator-ear-cup envelope, not manufacturer-approved values and not suitable for every head size. Coordinate system: +X = wearer\'s left, +Y = rear, +Z = up, origin at head-form centre. Mounting-hole coordinates are intentionally omitted: a certified helmet must not be drilled without manufacturer approval; use approved slots.</div><div class="dwg" id="dwgs"></div>';
+  h+='<h3>Bill of dimensions <span class="chip c-ass">provisional</span></h3><table><tr><th>Item</th><th>Dimension (mm)</th><th>Basis</th></tr>';
+  [['Helmet shell W x L x rise','224 x 280 x 88','Assumed envelope'],['Peak / brim','~32 beyond shell front','Assumed'],['Suspension band','192 x 232 x 26','Assumed; adjustment range TBD'],['Crown hub enclosure','110 x 55 x 26','Assumed'],['Side control module (NFC)','30 x 62 x 36','Assumed'],['Visor W x H','~180 x ~122','Assumed; per respirator maker TBD'],['Cartridge (each)','Ø80 x 42','Assumed; part TBD'],['Ear cup (each)','60 x 84 x 108','Assumed'],['Outer cup span','280','Assumed'],['Visor-to-shell clearance (model)','~16','Model value; verify'],['Neck / chest cover','~250 front length; ~370 shoulder span','Assumed'],['Battery pack (selected)',BATT[battOpt].size.join(' x '),'Assumed envelope, '+BATT[battOpt].name],['Cable diameter','Ø3 (power), Ø2.5 (signal)','Assumed'],['Total assembly mass','see 3D tab, mass and balance','Placeholder estimates']].forEach(r=>{h+='<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>';});
+  h+='</table></div>';$('#dwgroot').innerHTML=h;
+  const holder=$('#dwgs');const sv={ex:OPT.explode,cut:OPT.cutaway,sec:OPT.secOn,wire:OPT.wire,sel:OPT.sel,hov:OPT.hover,hi:OPT.hi,nfc:OPT.nfcZone};
+  OPT.explode=0;OPT.cutaway=false;OPT.secOn=false;OPT.wire=false;OPT.sel=-1;OPT.hover=-1;OPT.hi=null;OPT.nfcZone=false;worldUpdate();
+  DV.forEach(v=>{const c=document.createElement('canvas');const w=440,hh=360;c.width=w*2;c.height=hh*2;c.style.aspectRatio=w+'/'+hh;holder.appendChild(c);const x=c.getContext('2d');x.setTransform(2,0,0,2,0,0);
+    x.fillStyle='#fff';x.fillRect(0,0,w,hh);const cam={yaw:v.yaw,pitch:v.pitch,dist:1000,tx:0,ty:0,tz:-70};const sc=(v.k==='top'||v.k==='bottom')?0.95:(v.k==='left'||v.k==='right')?0.78:0.78;
+    const PJ=renderScene(x,w,hh,cam,{ortho:true,scale:sc,mono:true,hideRef:true});
+    v.dims.forEach(d=>dimLine(x,PJ.proj(d[0]),PJ.proj(d[1]),d[2]));
+    x.fillStyle='#17283a';x.font='bold 12px sans-serif';x.textAlign='left';x.fillText(v.t,8,16);
+    const bar=PJ.proj([0,0,0]),bar2=PJ.proj([100,0,0]);const len=Math.hypot(bar2[0]-bar[0],bar2[1]-bar[1]);x.strokeStyle='#17283a';x.lineWidth=2;x.beginPath();x.moveTo(10,hh-14);x.lineTo(10+sc*100,hh-14);x.stroke();x.font='10px sans-serif';x.fillText('100 mm',10,hh-20);
+    triad(x,PJ.R,w-40,hh-36);x.fillStyle='#8a5200';x.font='10px sans-serif';x.textAlign='right';x.fillText('provisional dimensions',w-8,16);});
+  OPT.explode=sv.ex;OPT.cutaway=sv.cut;OPT.secOn=sv.sec;OPT.wire=sv.wire;OPT.sel=sv.sel;OPT.hover=sv.hov;OPT.hi=sv.hi;OPT.nfcZone=sv.nfc;worldUpdate();redraw();
+}
+
+/* ---------- BOM + checklist ---------- */
+const MATERIAL={HEL:'Industrial protective polymer (per helmet maker)',RSP:'Elastomer / transparent polymer (per respirator maker)',NEK:'Task-rated protective textile (TBD)',EAR:'Polymer shell, foam cushion',ELC:'Rugged polymer enclosure / PCB (TBD)',CHS:'External certified device',PWR:'Cells TBD; polymer case',CAB:'Flexible cable, jacket TBD',NFC:'Passive NFC tag / antenna',REF:'n/a'};
+const QTY={'HEL-03':3,'HEL-06':4,'RSP-08':2,'EAR-05':4,'EAR-06':2,'EAR-07':2,'EAR-08':2,'EAR-10':2,'CAB-03':2,'NFC-04':2,'NFC-05':2,'EAR-01':1};
+function bomRows(){return PARTS.filter(p=>p.group!=='ref'&&!p.virtual).map(p=>{const i=INFO[p.id]||{};const c=p.center;
+  return [p.id,p.name,QTY[p.id]||1,i.dim||partDims(p),MATERIAL[p.id.slice(0,3)]||'TBD',i.elec||NOELEC,GROUP_LABEL[p.group]+' ('+c[0].toFixed(0)+', '+c[1].toFixed(0)+', '+c[2].toFixed(0)+')',i.src||'',(i.st||[]).join('; ')+' | '+KIND_LABEL[p.kind]+' | values: provisional'];});}
+function renderBom(){
+  const rows=bomRows();let h='<div class="card"><h2>Bill of materials</h2><div class="warn">Part identifiers are model IDs. Dimensions, materials and electrical specifications are provisional assumptions or TBD; none is datasheet-verified. Mass total: see 3D tab. <button class="b" id="csv">Download CSV</button></div><div style="overflow:auto"><table><tr><th>ID</th><th>Component</th><th>Qty</th><th>Dimensions (mm)</th><th>Material</th><th>Electrical specification</th><th>Mounting location (x, y, z mm)</th><th>Source / datasheet ref.</th><th>Status</th></tr>'
+   +rows.map(r=>'<tr>'+r.map(x=>'<td>'+esc(x)+'</td>').join('')+'</tr>').join('')+'</table></div></div>';
+  h+='<div class="card"><h2>Compliance checklist: requirement &rarr; component &rarr; status</h2><div style="overflow:auto"><table><tr><th>Requirement from PDF</th><th>Modelled component</th><th>Exact location</th><th>Dimension / specification</th><th>Status</th></tr>'
+   +CHECK.map(r=>'<tr><td>'+esc(r[0])+'</td><td>'+esc(r[1])+'</td><td>'+esc(r[2])+'</td><td>'+esc(r[3])+'</td><td>'+statChips(r[4])+'</td></tr>').join('')+'</table></div>';
+  h+='<h3>Design review notes</h3><ul><li><b>Not performed:</b> formal interference/clash analysis, centre-of-mass verification against a real head form, and certified-zone assessment. The model was reviewed visually only.</li><li>The status label "Modelled and dimensioned" is deliberately unused: the PDF supplies no dimensions, so every size is an assumption.</li><li>Reference-image deviations: no display is modelled on the helmet (PDF excludes displays in the line of sight); the camera is shown only as optional.</li><li>The cable route under the neck-cover rear flap, strain relief and break-away connectors are schematic.</li><li>Neck cover is modelled as a smooth drape, not a patterned textile; closures are schematic.</li></ul></div>';
+  $('#bomroot').innerHTML=h;
+  $('#csv').onclick=()=>{const hd=['ID','Component','Qty','Dimensions mm','Material','Electrical','Location','Source','Status'];const q=s=>'"'+String(s).replace(/"/g,'""')+'"';
+    dl(new Blob([[hd.map(q).join(',')].concat(rows.map(r=>r.map(q).join(','))).join('\n')],{type:'text/csv'}),'smart-hazard-protection-bom.csv');};
+}
+function renderAbout(){
+  $('#aboutroot').innerHTML='<div class="card"><h2>About this prototype</h2><p>This single HTML file contains an interactive 3D engineering-concept model of the Smart Hazard Protection System described in the project PDF, plus power, NFC, workflow, architecture, drawing, BOM and checklist views.</p>'
+  +'<h3>Dependencies</h3><p>None. The 3D view uses a small built-in canvas renderer; no library, network access or CDN is needed, so the file works fully offline in a modern browser.</p>'
+  +'<h3>How information is labelled</h3><p><span class="chip c-pdf">PDF specification</span> taken from the project PDF &nbsp; <span class="chip c-calc">calculated</span> derived by formula from stated inputs &nbsp; <span class="chip c-ass">provisional assumption / placeholder</span> engineering placeholder, not verified &nbsp; <span class="chip c-tbd">TBD</span> not determined. No datasheet-derived value is used because the PDF names component categories only.</p>'
+  +'<h3>What came from the PDF</h3><ul><li>The component set, roles and locations (hub, sensors, NFC reader and tags, alert outputs, ear cups, neck cover, helmet, respirator, battery options), the alert ladder, workflow stages, safety rules and the research-stage proposals.</li><li>The PDF contains <b>no</b> dimensions, currents, battery specifications or masses. All such values here are assumptions.</li></ul>'
+  +'<h3>Coordinate system</h3><p>Right-handed, millimetres. +X = wearer\'s left, +Y = rear, +Z = up. Origin at head-form centre.</p>'
+  +'<h3>Limits of this deliverable</h3><ul><li>It is a visual/engineering concept, not a native parametric CAD model. The STL export is faceted concept geometry for 3D-printing mock-ups of non-protective items only; STEP, DXF and native CAD files are not produced.</li><li>It does not show certified performance: respirator seal, filter capacity, hearing attenuation, helmet impact protection, gas detection and explosive-atmosphere suitability are all outside what this model can establish.</li><li>Do not drill or modify a certified helmet, alter a respirator seal, or place untested electronics in a hazardous atmosphere on the basis of this model.</li></ul>'
+  +'<h3>Required testing before any real use</h3><p>Fit and seal with the full ensemble; hearing attenuation and alarm audibility; sensor calibration and response; electrical operation and battery runtime; thermal and ingress behaviour; complete-ensemble compatibility; emergency removal; privacy and security review. These must be performed by qualified professionals.</p></div>';
+}
+
+/* ---------- Tabs and init ---------- */
+function showTab(t){$$('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));$$('.pane').forEach(p=>p.classList.toggle('on',p.id==='pane-'+t));
+  if(t==='model'){resize();renderInfo();}if(t==='power')renderPower();if(t==='flow')renderFlow();if(t==='arch')renderArch();if(t==='dwg')renderDrawings();if(t==='bom')renderBom();if(t==='about')renderAbout();}
+$$('#tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.t));
+worldUpdate();initControls();initShell();initFriendly();buildList();setView('iso');resize();renderInfo();updateStatus();requestAnimationFrame(frame);
+</script></body></html>
